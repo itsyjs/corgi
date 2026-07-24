@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+# Not a monorepo — this file is pnpm 11's home for settings. esbuild (pulled in by
+# VitePress/Vite for the docs site) needs its install script approved to link its
+# platform binary.
+onlyBuiltDependencies:
+  - esbuild

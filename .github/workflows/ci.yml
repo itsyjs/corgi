@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          # Node 24 for unflagged TypeScript type-stripping in `node --test test/*.test.ts`.
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # oxfmt --check + oxlint + tsc --noEmit + node --test
+      - run: pnpm check
+
+      # tsdown build + publint (validates the published exports/types wiring)
+      - run: pnpm build
+
+      # size-limit: per-export gzip budgets (fails the build if any export grows past its limit)
+      - run: pnpm size
+
+      # export-size: per-export report, annotated onto the run summary. `always()` so
+      # the table shows even when the size gate above trips; FORCE_COLOR=0 strips ANSI.
+      - name: Annotate build with export-size
+        if: always()
+        env:
+          FORCE_COLOR: '0'
+        run: |
+          {
+            echo '### export-size — `@itsy/corgi` root exports (min+brotli)'
+            echo ''
+            echo '```'
+            pnpm -s size:exports || echo 'export-size failed'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,41 @@
+[
+  {
+    "name": "corgi (singleton + create)",
+    "path": "dist/index.js",
+    "import": "{ corgi }",
+    "gzip": true,
+    "limit": "1450 B"
+  },
+  {
+    "name": "compose+order+ORDER",
+    "path": "dist/index.js",
+    "import": "{ compose, order, ORDER }",
+    "gzip": true,
+    "limit": "183 B"
+  },
+  { "name": "root (everything)", "path": "dist/index.js", "gzip": true, "limit": "1550 B" },
+  {
+    "name": "chonk: corgi",
+    "path": "dist/chonk.js",
+    "import": "{ corgi }",
+    "gzip": true,
+    "limit": "2545 B"
+  },
+  { "name": "/retry", "path": "dist/retry.js", "import": "{ withRetry }", "gzip": true, "limit": "937 B" },
+  {
+    "name": "/abort-previous",
+    "path": "dist/abort-previous.js",
+    "import": "{ abortPrevious }",
+    "gzip": true,
+    "limit": "297 B"
+  },
+  { "name": "/timeout", "path": "dist/timeout.js", "import": "{ withTimeout }", "gzip": true, "limit": "326 B" },
+  {
+    "name": "/timeout-modern",
+    "path": "dist/timeout-modern.js",
+    "import": "{ withTimeout }",
+    "gzip": true,
+    "limit": "218 B"
+  },
+  { "name": "/schema", "path": "dist/schema.js", "import": "{ schema }", "gzip": true, "limit": "192 B" }
+]

@@ -1,0 +1,171 @@
+/**
+ * @itsy/corgi docs theme — "Graphite Ember".
+ *
+ * Two tiers:
+ *   Tier 1 — palettes: full OKLCH ramps (--orange/--rose/--teal 50→950, --graphite
+ *            0→950). Mode-agnostic; higher number = darker.
+ *   Tier 2 — semantic mapping onto VitePress --vp-c-* vars (light in :root, dark
+ *            overrides). Every surface maps to a palette STEP — no ad-hoc alpha.
+ *
+ * Orange is one regularized hue (42); its brand steps (300–800) are WCAG-verified.
+ * The only intentional transparency is the hero glow (a blurred bloom that must
+ * fade to transparent), whose colors are still sourced from palette steps.
+ */
+
+:root {
+  /* ── Tier 1: palettes ─────────────────────────────────────────── */
+  /* orange (hue 42) — brand + tips */
+  --orange-50: oklch(96% 0.006 42);
+  --orange-100: oklch(92% 0.018 42);
+  --orange-200: oklch(89% 0.033 42);
+  --orange-300: oklch(84% 0.089 42);
+  --orange-400: oklch(76% 0.144 42);
+  --orange-500: oklch(65% 0.188 42);
+  --orange-600: oklch(55% 0.159 42);
+  --orange-700: oklch(51% 0.148 42);
+  --orange-800: oklch(47% 0.136 42);
+  --orange-900: oklch(32% 0.072 42);
+  --orange-950: oklch(23% 0.042 42);
+
+  /* rose (hue 16) — `::: details` + hero */
+  --rose-50: oklch(97% 0.007 16);
+  --rose-100: oklch(94% 0.01 16);
+  --rose-200: oklch(89% 0.032 16);
+  --rose-300: oklch(83% 0.071 16);
+  --rose-400: oklch(74% 0.147 16);
+  --rose-500: oklch(66% 0.227 16);
+  --rose-600: oklch(57% 0.226 16);
+  --rose-700: oklch(50% 0.19 16);
+  --rose-800: oklch(44% 0.158 16);
+  --rose-900: oklch(32% 0.096 16);
+  --rose-950: oklch(20% 0.04 16);
+
+  /* teal (hue 195) — `::: info` */
+  --teal-50: oklch(97% 0.009 195);
+  --teal-100: oklch(94% 0.031 195);
+  --teal-200: oklch(89% 0.084 195);
+  --teal-300: oklch(83% 0.106 195);
+  --teal-400: oklch(74% 0.116 195);
+  --teal-500: oklch(66% 0.111 195);
+  --teal-600: oklch(57% 0.096 195);
+  --teal-700: oklch(50% 0.081 195);
+  --teal-800: oklch(44% 0.068 195);
+  --teal-900: oklch(32% 0.041 195);
+  --teal-950: oklch(23% 0.024 195);
+
+  /* graphite — cool neutral ramp, light → dark */
+  --graphite-0: oklch(100% 0 0);
+  --graphite-50: oklch(96.5% 0.003 250);
+  --graphite-100: oklch(93% 0.005 255);
+  --graphite-200: oklch(89% 0.007 250);
+  --graphite-300: oklch(77% 0.01 258);
+  --graphite-400: oklch(65% 0.013 245);
+  --graphite-500: oklch(58% 0.015 262);
+  --graphite-600: oklch(54% 0.014 245);
+  --graphite-700: oklch(35% 0.008 245);
+  --graphite-750: oklch(28% 0.007 250);
+  --graphite-800: oklch(25% 0.006 270);
+  --graphite-850: oklch(21% 0.004 265);
+  --graphite-900: oklch(18.5% 0.006 260);
+  --graphite-950: oklch(0 0 0);
+
+  /* ── Tier 2: semantic (light) ─────────────────────────────────── */
+  --vp-c-brand-1: var(--orange-800); /* links/hero/tip — 7.25:1 on white */
+  --vp-c-brand-2: var(--orange-700); /* button hover — white 6.14:1 */
+  --vp-c-brand-3: var(--orange-600); /* button bg — white 5.20:1 */
+  --vp-c-brand-soft: var(--orange-100); /* tip/badge bg */
+  --vp-c-brand: var(--vp-c-brand-1);
+
+  --vp-code-color: var(--vp-c-text-1); /* de-tinted; code-links stay brand */
+  --vp-code-link-color: var(--vp-c-brand-1);
+  --vp-code-link-hover-color: var(--vp-c-brand-2);
+
+  --vp-c-bg: var(--graphite-0);
+  --vp-c-bg-alt: var(--graphite-50);
+  --vp-c-bg-soft: var(--graphite-50);
+  --vp-c-bg-elv: var(--graphite-0);
+  --vp-c-border: var(--graphite-200);
+  --vp-c-divider: var(--graphite-100);
+  --vp-c-gutter: var(--graphite-100);
+  --vp-c-text-1: var(--graphite-900); /* 18.6:1 on bg */
+  --vp-c-text-2: var(--graphite-600); /* 5.05:1 on bg */
+  --vp-c-text-3: var(--graphite-400);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg in oklch, var(--orange-500), var(--rose-600));
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle at 50% 50% in oklab,
+    color-mix(in oklab, var(--orange-500) 18%, transparent),
+    color-mix(in oklab, var(--rose-600) 12%, transparent) 48%,
+    transparent 72%
+  );
+  --vp-home-hero-image-filter: blur(56px);
+
+  /* ::: details → rose (block text stays neutral) */
+  --vp-custom-block-details-bg: var(--rose-50);
+  --vp-custom-block-details-code-bg: var(--rose-100);
+  --vp-custom-block-details-border: var(--rose-300);
+
+  /* ::: info → teal (borderless, like tip; details keeps its border for the toggle) */
+  --vp-custom-block-info-bg: var(--teal-50);
+  --vp-custom-block-info-code-bg: var(--teal-100);
+
+  --vp-custom-block-tip-bg: var(--orange-50);
+  --vp-custom-block-tip-code-bg: var(--orange-100);
+}
+
+.dark {
+  /* brand → lighter steps (buttons keep white text) */
+  --vp-c-brand-1: var(--orange-400); /* links/hero/tip — 8.26:1 on bg */
+  --vp-c-brand-2: var(--orange-500); /* hover — white 3.49 (AA-large) */
+  --vp-c-brand-3: var(--orange-600); /* button bg — white 5.20:1 */
+  --vp-c-brand-soft: var(--orange-950); /* tip/badge bg */
+  --vp-c-brand: var(--vp-c-brand-1);
+  --vp-button-brand-active-bg: var(--vp-c-brand-2); /* keep active AA (white 5.20) */
+
+  --vp-code-color: var(--vp-c-text-1);
+  --vp-code-link-color: var(--vp-c-brand-1);
+  --vp-code-link-hover-color: var(--vp-c-brand-2);
+
+  --vp-c-bg: var(--graphite-900);
+  --vp-c-bg-alt: var(--graphite-850);
+  --vp-c-bg-soft: var(--graphite-800);
+  --vp-c-bg-elv: var(--graphite-800);
+  --vp-c-border: var(--graphite-700);
+  --vp-c-divider: var(--graphite-750);
+  --vp-c-gutter: var(--graphite-950);
+  --vp-c-text-1: var(--graphite-50); /* 16.8:1 on bg */
+  --vp-c-text-2: var(--graphite-300); /* 9.00:1 on bg */
+  --vp-c-text-3: var(--graphite-500);
+
+  --vp-home-hero-name-background: linear-gradient(120deg in oklch, var(--orange-300), var(--rose-400));
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle at 50% 50% in oklab,
+    color-mix(in oklab, var(--orange-400) 22%, transparent),
+    color-mix(in oklab, var(--rose-400) 16%, transparent) 48%,
+    transparent 72%
+  );
+
+  /* ::: details → rose (dark) */
+  --vp-custom-block-details-bg: var(--rose-950);
+  --vp-custom-block-details-code-bg: var(--rose-900);
+  --vp-custom-block-details-border: var(--rose-700);
+
+  /* ::: info → teal (dark, borderless) */
+  --vp-custom-block-info-bg: var(--teal-950);
+  --vp-custom-block-info-code-bg: var(--teal-900);
+
+  --vp-custom-block-tip-bg: var(--orange-950);
+  --vp-custom-block-tip-code-bg: var(--orange-900);
+}
+
+/* Subtle per-section "read more" links (features guide). */
+.vp-doc .read-more a {
+  color: var(--vp-c-text-2);
+  font-weight: 400;
+  text-decoration: none;
+}
+.vp-doc .read-more a:hover {
+  color: var(--vp-c-brand-1);
+  text-decoration: underline;
+}

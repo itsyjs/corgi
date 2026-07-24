@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    // Modern target: native class fields + `class extends Error` work without
+    // downlevel helpers, and everything here runs on Node 18.17+, Deno, Bun,
+    // Cloudflare Workers, and evergreen browsers.
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    // Web platform types (fetch, Response, Headers, AbortController,
+    // ReadableStream, FormData, DOMException). We intentionally do NOT pull in
+    // @types/node so `setTimeout` is typed as returning a `number` — matching
+    // browsers/Deno/Workers and keeping `clearTimeout` portable.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // @types/node is here for the test suite (node:test) and the size script.
+    // The library source deliberately uses only web-standard globals; nothing
+    // Node-specific leaks into the published .d.ts.
+    "types": ["node"],
+
+    // Strictness. exactOptionalPropertyTypes is deliberately left OFF: it fights
+    // the DOM `RequestInit` passthrough (optional fields typed `T | null`, not
+    // `T | null | undefined`) for little real-world gain here.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+
+    // Author with explicit `.ts` specifiers so `node --test` can run the source
+    // directly via type-stripping; tsdown rewrites them to `.js` on build.
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+
+    "declaration": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "test", "tsdown.config.ts", "scripts"]
+}

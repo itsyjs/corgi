@@ -1,0 +1,92 @@
+{
+  "name": "@itsy/corgi",
+  "version": "0.1.0",
+  "description": "tiny composable typed fetch — one-off or client; cancel-previous, retry, timeout, and schema-validated transforms",
+  "keywords": [
+    "abort",
+    "client",
+    "composable",
+    "fetch",
+    "http",
+    "isomorphic",
+    "retry",
+    "timeout",
+    "tiny",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "Dave Honneffer <pearofducks@gmail.com>",
+  "repository": "github:itsyjs/corgi",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./retry": {
+      "types": "./dist/retry.d.ts",
+      "import": "./dist/retry.js"
+    },
+    "./abort-previous": {
+      "types": "./dist/abort-previous.d.ts",
+      "import": "./dist/abort-previous.js"
+    },
+    "./timeout": {
+      "types": "./dist/timeout.d.ts",
+      "import": "./dist/timeout.js"
+    },
+    "./timeout-modern": {
+      "types": "./dist/timeout-modern.d.ts",
+      "import": "./dist/timeout-modern.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js"
+    },
+    "./chonk": {
+      "types": "./dist/chonk.d.ts",
+      "import": "./dist/chonk.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "test": "node --test test/*.test.ts",
+    "test:build": "pnpm build && pnpm test",
+    "size": "size-limit",
+    "size:check": "export-size .",
+    "check": "oxfmt --check && oxlint && tsc --noEmit && node --test test/*.test.ts",
+    "docs:dev": "pnpm build && vitepress dev docs",
+    "docs:build": "pnpm build && vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "@shikijs/vitepress-twoslash": "^2.5.0",
+    "@size-limit/esbuild": "^12.1.0",
+    "@size-limit/file": "^12.1.0",
+    "@types/node": "^24.9.2",
+    "export-size": "^0.8.0",
+    "oxfmt": "^0.59.0",
+    "oxlint": "^1.74.0",
+    "oxlint-tsgolint": "^0.25.0",
+    "publint": "^0.3.2",
+    "size-limit": "^12.1.0",
+    "tsdown": "^0.15.6",
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "packageManager": "pnpm@11.9.0"
+}
