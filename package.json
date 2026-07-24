@@ -73,6 +73,8 @@
     "size": "size-limit",
     "size:check": "export-size .",
     "check": "oxfmt --check && oxlint && tsc --noEmit && node --test test/*.test.ts",
+    "preversion": "npm run check",
+    "postversion": "git push --follow-tags",
     "docs:dev": "pnpm build && vitepress dev docs",
     "docs:build": "pnpm build && vitepress build docs",
     "docs:preview": "vitepress preview docs"
