@@ -1,6 +1,6 @@
 {
   "name": "@itsy/corgi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "tiny composable typed fetch — one-off or client; cancel-previous, retry, timeout, and schema-validated transforms",
   "keywords": [
     "abort",
