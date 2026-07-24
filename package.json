@@ -16,7 +16,10 @@
   ],
   "license": "MIT",
   "author": "Dave Honneffer <pearofducks@gmail.com>",
-  "repository": "github:itsyjs/corgi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsyjs/corgi.git"
+  },
   "files": [
     "dist"
   ],
@@ -53,6 +56,10 @@
       "import": "./dist/chonk.js"
     },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsdown",

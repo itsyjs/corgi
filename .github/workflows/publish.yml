@@ -1,0 +1,40 @@
+name: Publish
+
+# Publishes @itsy/corgi to npm on a `v*` tag, using npm trusted publishing
+# (OIDC — no NPM_TOKEN) with provenance. Requires a trusted publisher configured
+# on npmjs.com: org `itsyjs`, repo `corgi`, workflow `publish.yml`, env `Release`.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC auth + provenance attestation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest # GitHub-hosted only; self-hosted runners unsupported for OIDC
+    environment: Release # approval gate (required reviewers configured on the env)
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org' # writes .npmrc so pnpm targets npm for the OIDC exchange
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Full gate: oxfmt --check + oxlint + tsc --noEmit + node --test
+      - run: pnpm check
+
+      # Build dist/ (the only published files)
+      - run: pnpm build
+
+      # Tokenless publish. --provenance is explicit (belt-and-suspenders alongside
+      # publishConfig.provenance); --access public for the scoped package; tag ref
+      # isn't a branch so skip git checks.
+      - run: pnpm publish --provenance --access public --no-git-checks
