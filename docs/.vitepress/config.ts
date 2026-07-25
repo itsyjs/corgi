@@ -63,10 +63,10 @@ export default defineConfig({
       { text: 'Recipes', link: '/recipes/', activeMatch: '/recipes/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       {
-        text: 'v0.1',
+        text: 'v1',
         items: [
           { text: 'Changelog', link: 'https://github.com/itsyjs/corgi/releases' },
-          { text: 'npm', link: 'https://www.npmjs.com/package/@itsy/corgi' },
+          { text: 'npmx', link: 'https://npmx.dev/package/@itsy/corgi' },
         ],
       },
     ],
