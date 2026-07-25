@@ -30,11 +30,18 @@ import { withRetry, type RetryOptions } from './retry.ts';
 import { abortPrevious } from './abort-previous.ts';
 import { withTimeout } from './timeout.ts';
 
-/** {@link CorgiOptions} plus first-class options for the built-in plugins. */
+/**
+ * {@link CorgiOptions} plus first-class options for the built-in plugins. Note
+ * `schema` is deliberately NOT an option here — validation is per-call (each
+ * endpoint has its own shape), so use it as a `transform`:
+ * `client.get(url, { transform: schema(User) })`.
+ */
 export interface CorgiChonkOptions extends CorgiOptions {
-  /** Retry transient failures. A bare number is shorthand for `{ retries: n }`. */
+  /** Retry transient failures. A bare number is shorthand for `{ retries: n }`
+   * (`0` = no retries). Omit to add no retry plugin at all. */
   retry?: RetryOptions | number;
-  /** Per-attempt deadline in ms (uses the hand-rolled 2022-safe `withTimeout`). */
+  /** Per-attempt deadline in ms (uses the hand-rolled 2022-safe `withTimeout`;
+   * import from `/chonk` as `withTimeoutModern` if you want the builtin one). */
   timeout?: number;
   /** Abort the previous in-flight request whenever a new one starts. */
   abortPrevious?: boolean;

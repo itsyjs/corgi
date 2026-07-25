@@ -53,29 +53,62 @@ export type MappedResponse<P extends ParseAs, T> = [P] extends ['text']
  */
 export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
   method?: string;
+  /**
+   * Per-call headers. Merged case-insensitively, so `Content-Type` and
+   * `content-type` collapse to one (never duplicated). Precedence low -> high:
+   * the auto `application/json` from a plain-object body < client `headers` <
+   * these — a per-call header always wins.
+   */
   headers?: HeadersInit;
-  /** Plain object/array is JSON-encoded; BodyInit values pass through untouched. */
+  /**
+   * Request body. A plain object/array is JSON-encoded and sets
+   * `content-type: application/json` (unless you set one). Every real `BodyInit` —
+   * string, `FormData`, `Blob`/`File`, `URLSearchParams`, `ReadableStream`,
+   * `ArrayBuffer`/typed arrays — passes through untouched (the runtime sets the
+   * right header, e.g. the multipart boundary for `FormData`). `null`/`undefined`
+   * send no body. A `ReadableStream` body gets `duplex: 'half'` automatically
+   * (Node/undici require it) — and note a stream body is NOT retryable.
+   */
   body?: BodyInit | Record<string, unknown> | readonly unknown[] | null;
-  /** Object merged into the URL's query string (arrays -> repeated keys). */
+  /**
+   * Merged into the URL's query string (existing params and `#hash` are kept):
+   *   - arrays expand to repeated keys — `{ tag: ['a','b'] }` -> `tag=a&tag=b`;
+   *   - `null`/`undefined` values (and nullish array items) are OMITTED — never
+   *     sent as `key=` or a bare `key` (matches axios); an empty array omits the key;
+   *   - a scalar replaces a same-named existing param; an array replaces then appends;
+   *   - keys/values are `URLSearchParams`-encoded (space -> `+`, unicode -> UTF-8).
+   */
   query?: Query;
-  /** Prefix-joined with the url (see joinURL); absolute urls bypass it. */
+  /** Prefix-joined with the url — the base's own path is kept (unlike `new URL`,
+   * which drops it); an absolute or protocol-relative url bypasses it. */
   baseURL?: string;
-  /** Force a parse mode instead of sniffing the content-type. */
+  /** Force a parse mode instead of sniffing the content-type — see {@link ParseAs}.
+   * Forcing `'json'` on a non-JSON body throws a `SyntaxError` (the default
+   * sniffing path never does). */
   responseType?: ParseAs;
-  /** Throw `HttpError` on non-2xx. Default true. */
+  /**
+   * Throw {@link HttpError} on any non-2xx response. Default `true`. When `false`,
+   * a non-2xx resolves instead of throwing and you get the PARSED body — on an
+   * error that's the error payload, still typed as your `<T>`, so narrow it
+   * yourself. For the raw `Response` (no parse, no throw) use `.raw()`.
+   */
   throwOnError?: boolean;
-  /** Post-parse hook: map/validate the value. Its return type becomes the result. */
+  /** Post-parse hook: map/validate the value. Its return type becomes the result.
+   * Runs after parsing; overrides both `responseType` and `<T>`. Powers `schema()`. */
   transform?: (value: unknown, response: Response) => unknown;
 }
 
 /** Corgi-level defaults, merged into every request. */
 export interface CorgiOptions {
   baseURL?: string;
+  /** Default headers for every request. Merged case-insensitively; a per-call
+   * `headers` entry overrides the same key here, which overrides the auto JSON
+   * `content-type`. */
   headers?: HeadersInit;
   throwOnError?: boolean;
   /** Middleware plugins for this client. Built into the pipeline once, reused
    * across calls (so stateful plugins like abortPrevious keep their memory).
-   * Order-sorted by their `order` hint — see ORDER/byOrder in core.ts. */
+   * Order-sorted by their `order` hint — see {@link ORDER}. */
   plugins?: readonly Plugin[];
   fetch?: typeof fetch;
   credentials?: RequestCredentials;
@@ -89,6 +122,9 @@ export interface CorgiOptions {
 /**
  * The call signature set, shared by the client itself and each verb shortcut.
  * Overloads resolve the return type by priority: `transform` > `responseType` > `<T>`.
+ *
+ * Runtime note: a no-body response (status 204/205/304, or any HEAD request)
+ * resolves to `undefined` regardless of `<T>` — guard the value before using it.
  */
 export interface Call {
   /** With a `transform`, the result type is whatever the transform returns. */
@@ -112,10 +148,13 @@ export interface Corgi extends Call {
   put: Call;
   patch: Call;
   delete: Call;
-  head: Call;
+  /** HEAD carries no body, so this always resolves to `undefined`. */
+  head: (url: string, options?: RequestOptions) => Promise<undefined>;
   /** Get the raw `Response` — no parsing, no throwing. The no-throw escape hatch. */
   raw: (url: string, options?: RequestOptions) => Promise<Response>;
-  /** Derive a new client whose defaults extend this one's (headers/plugins combine). */
+  /** Derive a new client whose defaults extend this one's. Scalars (baseURL,
+   * throwOnError…) override; `headers` merge (child wins per key) and `plugins`
+   * concatenate (parent's first, then child's). */
   extend: (defaults?: CorgiOptions) => Corgi;
 }
 

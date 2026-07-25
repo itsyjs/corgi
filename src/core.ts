@@ -21,10 +21,32 @@
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 /**
- * A plugin: middleware for `Fetcher`s. The optional `order` hint lets
- * {@link compose} (and `corgi`, built on it) place plugins in a sensible
- * sequence no matter what order you list them in (see {@link ORDER}). Plugins
- * with no hint — or an equal one — keep the order you listed them in.
+ * A plugin: middleware for `Fetcher`s — `(next) => (url, init) => Promise<Response>`.
+ * The optional `order` hint lets {@link compose} (and `corgi`, built on it) place
+ * plugins in a sensible sequence no matter what order you list them in (see
+ * {@link ORDER}). A plugin with NO hint sorts at 250 — between `dedupe` (200) and
+ * `retry` (300); plugins that share a hint keep the order you listed them in.
+ *
+ * Authoring rules — a plugin is a pure `Response -> Response` layer:
+ *   - Always resolve to a `Response`. Call `next(url, init)` to continue, or skip
+ *     it to short-circuit (serve a cached/synthetic `Response` without hitting fetch).
+ *   - Do NOT consume the body of a `Response` you return — the client parses it once,
+ *     after the pipeline. Clone to inspect (`res.clone()`) and return the original.
+ *     Release a `Response` you DISCARD with `res.body?.cancel()` so the connection
+ *     is freed.
+ *   - Treat `init` as immutable: pass a fresh object — `next(url, { ...init, headers })`
+ *     — never mutate the caller's. When you replace `signal`, forward the caller's
+ *     abort + reason too (so `isAbortError`/`isTimeoutError` stay correct downstream).
+ *   - A plugin receives the FINAL url string and a `RequestInit`: `query` is already
+ *     merged into the url and `body` already serialized. To map/validate the PARSED
+ *     value use a per-call `transform`, not a plugin.
+ *
+ *   // log every request/response. Untagged -> runs once per logical call.
+ *   const withLog: Plugin = (next) => async (url, init) => {
+ *     const res = await next(url, init)
+ *     console.log(res.status, init?.method ?? 'GET', url)
+ *     return res
+ *   }
  */
 export type Plugin = ((next: Fetcher) => Fetcher) & { readonly order?: number };
 
@@ -95,7 +117,8 @@ export const byOrder = (a: Plugin, b: Plugin): number => (a.order ?? DEFAULT_ORD
  *   compose(a, b, c)(base) === a(b(c(base)))   // when a, b, c share/omit order
  *
  * Call the result with a base `Fetcher` to get the final pipeline. If you omit
- * the base, a bind-safe global `fetch` is used (see {@link resolveFetch}):
+ * the base, a bind-safe global `fetch` is used (an arrow wrapper around
+ * `globalThis.fetch`, so the receiver stays correct on Cloudflare Workers):
  *
  *   const call = compose(withRetry(), withTimeout(5000))()   // -> Fetcher
  *

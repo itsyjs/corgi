@@ -70,7 +70,8 @@ export class ValidationError extends Error {
   }
 }
 
-/** Is this a {@link ValidationError}? Name-based, not `instanceof`. */
+/** Is this a {@link ValidationError}? Checks `error.name` (not `instanceof
+ * ValidationError`, so it survives realm boundaries); requires a real `Error`. */
 export function isValidationError(error: unknown): error is ValidationError {
   return error instanceof Error && error.name === 'ValidationError';
 }
@@ -85,6 +86,12 @@ export function isValidationError(error: unknown): error is ValidationError {
  *
  *   const User = z.object({ id: z.number(), name: z.string() })
  *   const user = await api.get('/users/1', { transform: schema(User) }) // typed + validated
+ *
+ * Any Standard Schema validator works identically — e.g. Valibot or ArkType:
+ *
+ *   import * as v from 'valibot'
+ *   const User = v.object({ id: v.number(), name: v.string() })
+ *   const user = await api.get('/users/1', { transform: schema(User) })
  *
  * The returned function matches the client's `transform` signature exactly
  * (`(value, response?) => Promise<Output>`); the response argument is accepted

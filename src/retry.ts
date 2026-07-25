@@ -16,15 +16,32 @@ import { ORDER, order } from './core.ts';
 export interface RetryOptions {
   /** Retries *after* the first attempt. Default 2 (so up to 3 total tries). */
   retries?: number;
-  /** Base backoff in ms; the wait for attempt n is random in [0, base * 2**n). Default 300. */
+  /**
+   * Base backoff in ms (default 300). Exponential with full jitter: the wait
+   * before the k-th retry (k >= 1) is random in
+   * `[0, min(maxDelay, base * 2 ** (k - 1)))`. The randomness scatters clients so
+   * they don't retry in lockstep (thundering herd). A `Retry-After` overrides it.
+   */
   backoff?: number;
   /** Ceiling for any single wait, and the cap applied to `Retry-After`. Default 10_000. */
   maxDelay?: number;
-  /** Methods eligible for retry. Default: the idempotent set (safe to repeat). */
+  /**
+   * Methods eligible for retry. Default: the idempotent methods
+   * `GET, HEAD, PUT, DELETE, OPTIONS, TRACE`. `POST` and `PATCH` are excluded —
+   * replaying them can double-create/charge; opt one in only if you know it's safe.
+   */
   methods?: readonly string[];
-  /** Response statuses that trigger a retry. Default: 408/429/500/502/503/504. */
+  /**
+   * Response statuses that trigger a retry. Default: 408/429/500/502/503/504. A
+   * `Retry-After` header (seconds or an HTTP-date) on a retried response is
+   * honored in place of computed backoff, capped at `maxDelay`.
+   */
   statuses?: readonly number[];
-  /** Called right before each backoff wait — handy for logging/metrics. */
+  /**
+   * Called right before each backoff wait — handy for logging/metrics. `attempt`
+   * is 1-based (1 = the first retry). Exactly one of `error` / `response` is
+   * present: `error` on a thrown failure, `response` on a retryable status.
+   */
   onRetry?: (info: { attempt: number; delay: number; error?: unknown; response?: Response }) => void;
 }
 
@@ -124,7 +141,19 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * Retry transient failures for idempotent requests.
+ * Retry transient failures for idempotent requests, with exponential backoff +
+ * full jitter and `Retry-After` support.
+ *
+ * Eligibility is fixed once per call: the method must be in `methods` (default
+ * idempotent set) AND the body must be replayable. Value bodies (none, string,
+ * `URLSearchParams`, `Blob`/`File`, `FormData`, `ArrayBuffer`/typed arrays) are
+ * replayable; a `ReadableStream` body is consumed by the first attempt and so is
+ * NEVER retried, even on an idempotent method.
+ *
+ * What triggers a retry: a response whose status is in `statuses`; a thrown
+ * per-attempt `TimeoutError`; or a genuine network `TypeError`. What does NOT: a
+ * caller `AbortError` (or a fired total-deadline signal), and a programmer-error
+ * `TypeError` (e.g. "is not a function", "Illegal invocation").
  *
  * Ordering: tagged `ORDER.retry` (300) so it sits OUTSIDE `withTimeout` (400).
  * That means each attempt gets a fresh timeout and a fired timeout is retried.

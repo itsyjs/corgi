@@ -11,7 +11,22 @@
  *     so a plain-text or HTML response never blows up.
  */
 
-/** What to parse a response into. `json` is the default. */
+/**
+ * What to parse a response into. `json` is the default.
+ *
+ * With no explicit `responseType`, the client sniffs the `content-type`:
+ *   - `application/json` and structured `+json` suffixes (e.g.
+ *     `application/problem+json`, `application/vnd.api+json`), ignoring `; charset`
+ *     -> parsed JSON; an empty body yields `undefined` (never throws "Unexpected
+ *     end of JSON input");
+ *   - `text/*`, or a missing/unknown content-type -> text (never guessed as JSON,
+ *     so an HTML error page won't blow up); empty -> `undefined`;
+ *   - anything else (octet-stream, images, `application/xml`, …) -> `Blob`.
+ * A no-body response (204/205/304, or a HEAD request) is always `undefined`.
+ *
+ * An explicit `responseType` overrides sniffing — but forcing `'json'` on a
+ * non-JSON body throws a `SyntaxError`.
+ */
 export type ParseAs = 'json' | 'text' | 'blob' | 'arrayBuffer' | 'formData' | 'stream';
 
 // Matches `application/json` and structured-suffix JSON like `application/ld+json`

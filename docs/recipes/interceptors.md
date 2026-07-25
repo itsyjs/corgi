@@ -20,7 +20,7 @@ ofetch's `timeout: ms` isn't a lifecycle hook, so it's not in the table above. M
 to a deadline instead:
 
 | ofetch                     | corgi                                                          |
-| -------------------------- | ------------------------------------------------------------- |
+| -------------------------- | -------------------------------------------------------------- |
 | `timeout: ms` (per call)   | `signal: AbortSignal.timeout(ms)` — TOTAL budget for that call |
 | `timeout: ms` (every call) | the [`withTimeout(ms)`](/plugins/timeout) plugin — PER-ATTEMPT |
 

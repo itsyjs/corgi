@@ -19,10 +19,23 @@ import type { Fetcher, Plugin } from './core.ts';
 import { ORDER, order } from './core.ts';
 
 /**
- * Give each downstream request an `ms` deadline. Tagged `ORDER.timeout` (the
- * innermost slot), so combined with `withRetry` each attempt gets its own fresh
- * timeout and a fired timeout is retried. For a single TOTAL budget across all
- * retries, pass `signal: AbortSignal.timeout(totalMs)` on the request instead.
+ * Per-attempt request deadline — the smaller, builtin-based `withTimeout`
+ * (`AbortSignal.timeout()` + `AbortSignal.any()`), ~60% of the bytes of
+ * `@itsy/corgi/timeout`.
+ *
+ * Requires a **Baseline-2024** runtime for `AbortSignal.any`: Node 18.17+,
+ * Chrome 116+, Firefox 124+, Safari 17.4+, Deno 1.39+, Bun 1.1+. On an older
+ * runtime use `@itsy/corgi/timeout` instead — this build combines a caller
+ * `signal` (including the recommended `AbortSignal.timeout(ms)` total budget) via
+ * `AbortSignal.any`, which throws where that's missing. Trade-off: a native
+ * `AbortSignal.timeout()` timer can't be cancelled, so it lingers (unref'd on
+ * Node) until it fires even after the request settles — negligible for clients,
+ * but the hand-rolled build avoids it for very high-QPS servers.
+ *
+ * Drop-in with `@itsy/corgi/timeout`: same `ORDER.timeout` slot, same `ms`
+ * semantics (`0`/`Infinity` disable), same `"TimeoutError"` name. Combined with
+ * `withRetry` each attempt gets a fresh deadline and a fired timeout is retried;
+ * for a single TOTAL budget pass `signal: AbortSignal.timeout(totalMs)` instead.
  */
 export function withTimeout(ms: number): Plugin {
   return order(

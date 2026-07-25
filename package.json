@@ -21,7 +21,8 @@
     "url": "git+https://github.com/itsyjs/corgi.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENTS.md"
   ],
   "type": "module",
   "sideEffects": false,

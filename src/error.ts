@@ -11,10 +11,10 @@
  * Thrown by the client when a response has a non-2xx status (unless
  * `throwOnError: false`).
  *
- * `response` is a *clone* taken before we read the body, so it is still fully
- * readable (`await err.response.text()` works). `data` is a best-effort parse of
- * the error body (JSON or text) for convenience — typed `unknown` because error
- * shapes aren't known at compile time.
+ * `response` is left with its body UNREAD — `data` is parsed from a clone — so
+ * `err.response` is still fully readable (`await err.response.text()` works, once,
+ * like any body). `data` is a best-effort parse of the error body (JSON or text)
+ * for convenience — typed `unknown` because error shapes aren't known at compile time.
  */
 export class HttpError extends Error {
   override readonly name = 'HttpError';

@@ -8,8 +8,11 @@
  * `/v1` is gone). That's a classic production footgun, so we join manually.
  */
 
-/** A value that can appear in the query object. Arrays expand to repeated keys. */
+/** A single query value. `null`/`undefined` are OMITTED from the string entirely
+ * — never sent as `key=` or a bare `key`. */
 export type QueryValue = string | number | boolean | null | undefined;
+/** The `query` object. Arrays expand to repeated keys (`{ tag: ['a','b'] }` ->
+ * `tag=a&tag=b`); an empty array omits the key. See `RequestOptions.query`. */
 export type Query = Record<string, QueryValue | ReadonlyArray<string | number | boolean>>;
 
 /**

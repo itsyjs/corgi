@@ -24,12 +24,25 @@ import { ORDER, order } from './core.ts';
  * Tagged `ORDER.cancel` (the outermost slot) so a superseding call cancels the
  * ENTIRE prior chain — including any retries or timeout it had running.
  *
+ *   import { corgi, isAbortError } from '@itsy/corgi'
+ *   import { abortPrevious } from '@itsy/corgi/abort-previous'
  *   import { withTimeout } from '@itsy/corgi/timeout'
- *   const search = corgi({ plugins: [abortPrevious(), withTimeout(5000)] })
- *   search.get('/search', { query: { q } }) // each keystroke aborts the last
  *
- * The superseded request rejects with an `AbortError`; in typeahead you normally
- * ignore that rejection (it's expected, not a real failure).
+ *   // Plugins are client-level — build the client ONCE and reuse it.
+ *   const search = corgi.create({ plugins: [abortPrevious(), withTimeout(5000)] })
+ *   try {
+ *     const hits = await search.get('/search', { query: { q } }) // each call aborts the last
+ *   } catch (err) {
+ *     if (isAbortError(err)) return // superseded — expected, ignore
+ *     throw err
+ *   }
+ *
+ * The superseded request rejects with an `AbortError` (detect with `isAbortError`;
+ * it reads the same as a caller cancel). This plugin is STATEFUL — it holds the
+ * current request in a closure built when the pipeline is composed — so keep it at
+ * the CLIENT level (one instance == one logical stream, e.g. one search box). On a
+ * server, build the client PER REQUEST; never share one at module scope, or
+ * unrelated requests will cancel each other.
  */
 export function abortPrevious(): Plugin {
   return order(ORDER.cancel, (next: Fetcher): Fetcher => {
