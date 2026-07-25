@@ -110,3 +110,14 @@ const api = corgi.create();
 const controller = new AbortController();
 await api.get('/slow', { signal: controller.signal, credentials: 'include' });
 ```
+
+A per-call deadline is a `signal` too — `AbortSignal.timeout(ms)` aborts the call (a
+TOTAL budget spanning any retries). For a per-attempt deadline use the
+[`withTimeout`](/plugins/timeout) plugin.
+
+```ts twoslash
+import { corgi } from '@itsy/corgi';
+const api = corgi.create();
+// ---cut---
+await api.get('/slow', { signal: AbortSignal.timeout(5000) }); // this call: 5s max
+```

@@ -14,6 +14,19 @@ ordering, and state on top.
 | `onResponse({ ..., response })`      | code after `await next` (status + headers) |
 | `onResponseError({ ..., response })` | after `next`, guard on `!res.ok`           |
 
+## Not an interceptor: `timeout`
+
+ofetch's `timeout: ms` isn't a lifecycle hook, so it's not in the table above. Map it
+to a deadline instead:
+
+| ofetch                     | corgi                                                          |
+| -------------------------- | ------------------------------------------------------------- |
+| `timeout: ms` (per call)   | `signal: AbortSignal.timeout(ms)` — TOTAL budget for that call |
+| `timeout: ms` (every call) | the [`withTimeout(ms)`](/plugins/timeout) plugin — PER-ATTEMPT |
+
+Want both a per-attempt cap and one total budget? See
+[Per-attempt + total timeouts](/recipes/total-timeout).
+
 ## All four in one plugin
 
 ```ts twoslash

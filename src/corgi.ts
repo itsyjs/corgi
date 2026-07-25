@@ -45,6 +45,11 @@ export type MappedResponse<P extends ParseAs, T> = [P] extends ['text']
  * `fetch`, timeout — is client-level only (`corgi.create`/`extend`), so the
  * pipeline (and any stateful plugin's memory, e.g. abortPrevious) is built once
  * and reused. Need a one-off variation? Derive a client with `.extend({...})`.
+ *
+ * No per-call `timeout` field: for a per-call deadline pass the standard
+ * `signal: AbortSignal.timeout(ms)` (a TOTAL budget for that call, spanning any
+ * retries); for a per-attempt deadline add the `withTimeout` plugin
+ * (`@itsy/corgi/timeout[-modern]`, client-level).
  */
 export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
   method?: string;

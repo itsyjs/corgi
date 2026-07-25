@@ -28,6 +28,10 @@ interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'
 ::: info Pipeline config is client-level
 There is no per-call `plugins`, `fetch`, or `timeout`. Those shape the pipeline
 and live on [`CorgiOptions`](#corgioptions) / `extend`.
+
+For a per-call deadline, pass the standard `signal: AbortSignal.timeout(ms)` — a
+**total** budget for that call. For a **per-attempt** deadline, add the
+[`withTimeout`](/plugins/timeout) plugin (client-level).
 :::
 
 ## `CorgiOptions`
