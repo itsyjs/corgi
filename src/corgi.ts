@@ -68,8 +68,14 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'h
    * right header, e.g. the multipart boundary for `FormData`). `null`/`undefined`
    * send no body. A `ReadableStream` body gets `duplex: 'half'` automatically
    * (Node/undici require it) — and note a stream body is NOT retryable.
+   *
+   * The object arm is deliberately wide (`object`, not `Record<string, unknown>`)
+   * so a plain `interface` DTO type-checks — `Record<string, unknown>` rejects
+   * interfaces for want of an index signature (TS#15300). Trade-off: a non-plain
+   * object (a `Map`/`Set`/class instance) also type-checks, but `JSON.stringify`
+   * yields whatever it yields (often `{}`) — pass a plain object or a real `BodyInit`.
    */
-  body?: BodyInit | Record<string, unknown> | readonly unknown[] | null;
+  body?: BodyInit | object | null;
   /**
    * Merged into the URL's query string (existing params and `#hash` are kept):
    *   - arrays expand to repeated keys — `{ tag: ['a','b'] }` -> `tag=a&tag=b`;

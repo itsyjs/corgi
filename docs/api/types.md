@@ -10,8 +10,9 @@ passes straight through.
 interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
   method?: string;
   headers?: HeadersInit;
-  /** Plain object/array is JSON-encoded; BodyInit values pass through untouched. */
-  body?: BodyInit | Record<string, unknown> | readonly unknown[] | null;
+  /** Plain object/array -> JSON; BodyInit passes through. `object` (not `Record<string, unknown>`)
+   * so interface DTOs type-check (TS#15300); a Map/Set/class instance type-checks but won't JSON-serialize cleanly. */
+  body?: BodyInit | object | null;
   /** Object merged into the URL's query string (arrays -> repeated keys). */
   query?: Query;
   /** Prefix-joined with the url; absolute urls bypass it. */
