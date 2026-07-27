@@ -72,7 +72,6 @@ reads cleaner.
 
 ```ts twoslash
 import type { HttpMethod } from '@itsy/corgi';
-//          ^?
 ```
 
 ::: info Pipeline config is client-level
