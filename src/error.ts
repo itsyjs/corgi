@@ -13,10 +13,13 @@
  *
  * `response` is left with its body UNREAD — `data` is parsed from a clone — so
  * `err.response` is still fully readable (`await err.response.text()` works, once,
- * like any body). `data` is a best-effort parse of the error body (JSON or text)
- * for convenience — typed `unknown` because error shapes aren't known at compile time.
+ * like any body). `data` is a best-effort parse of the error body (JSON or text).
+ *
+ * `data` is typed `unknown` by default (error shapes aren't known at compile
+ * time), but the class is generic: name your error payload via the guard —
+ * `if (isHttpError<ApiError>(err)) err.data // ApiError` — with no cast.
  */
-export class HttpError extends Error {
+export class HttpError<T = unknown> extends Error {
   override readonly name = 'HttpError';
   // `declare` keeps the (readonly) types + `.d.ts` surface but emits NO runtime
   // field slots — the constructor below assigns them. Without `declare`, es2022
@@ -26,9 +29,9 @@ export class HttpError extends Error {
   declare readonly statusText: string;
   declare readonly url: string;
   declare readonly response: Response;
-  declare readonly data: unknown;
+  declare readonly data: T;
 
-  constructor(response: Response, data: unknown) {
+  constructor(response: Response, data: T) {
     super(`HTTP ${response.status} ${response.statusText} (${response.url})`);
     this.status = response.status;
     this.statusText = response.statusText;
@@ -42,8 +45,13 @@ export class HttpError extends Error {
  * Is this an {@link HttpError}? Checked by `name`, not `instanceof`, so it stays
  * correct across iframes, web workers, and vm contexts, and across duplicate bundled
  * copies — both situations where `instanceof` silently returns false.
+ *
+ * Optionally name the error payload to type `err.data` without a cast:
+ * `if (isHttpError<ApiError>(err)) err.data // ApiError`. The type argument is an
+ * unchecked assertion (the guard only verifies it's an `HttpError`), so pass the
+ * shape you know the endpoint returns.
  */
-export function isHttpError(error: unknown): error is HttpError {
+export function isHttpError<T = unknown>(error: unknown): error is HttpError<T> {
   return hasName(error, 'HttpError');
 }
 

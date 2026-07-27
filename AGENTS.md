@@ -7,15 +7,15 @@ for exact types. This file is the task-oriented map.
 
 ## Import map (symbols live on subpaths — the root does NOT re-export plugins)
 
-| import path                  | exports                                                                                                                                                                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@itsy/corgi`                | `corgi` (+ `corgi.create`), `compose`, `order`, `ORDER`, `HttpError`, `isHttpError`, `isTimeoutError`, `isAbortError`; types `Corgi`, `CorgiAPI`, `Call`, `CorgiOptions`, `RequestOptions`, `MappedResponse`, `ParseAs`, `Query`, `QueryValue`, `Fetcher`, `Plugin` |
-| `@itsy/corgi/retry`          | `withRetry`, type `RetryOptions`                                                                                                                                                                                                                                    |
-| `@itsy/corgi/timeout`        | `withTimeout` (hand-rolled, 2022-safe)                                                                                                                                                                                                                              |
-| `@itsy/corgi/timeout-modern` | `withTimeout` (builtin-based, smaller, Baseline-2024)                                                                                                                                                                                                               |
-| `@itsy/corgi/abort-previous` | `abortPrevious`                                                                                                                                                                                                                                                     |
-| `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                                                                                                                                                                              |
-| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious` as options; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                                  |
+| import path                  | exports                                                                                                                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@itsy/corgi`                | `corgi` (+ `corgi.create`), `compose`, `order`, `ORDER`, `HttpError`, `isHttpError`, `isTimeoutError`, `isAbortError`; types `Corgi`, `CorgiAPI`, `Call`, `CorgiOptions`, `RequestOptions`, `MappedResponse`, `ParseAs`, `Query`, `QueryValue`, `HttpMethod`, `Fetcher`, `Plugin` |
+| `@itsy/corgi/retry`          | `withRetry`, type `RetryOptions`                                                                                                                                                                                                                                                  |
+| `@itsy/corgi/timeout`        | `withTimeout` (hand-rolled, 2022-safe)                                                                                                                                                                                                                                            |
+| `@itsy/corgi/timeout-modern` | `withTimeout` (builtin-based, smaller, Baseline-2024)                                                                                                                                                                                                                             |
+| `@itsy/corgi/abort-previous` | `abortPrevious`                                                                                                                                                                                                                                                                   |
+| `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                                                                                                                                                                                            |
+| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious` as options; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                                                |
 
 ## Core usage
 
@@ -30,8 +30,9 @@ const raw = await api.raw('/x'); // raw Response, no parse/throw
 const scoped = api.extend({ headers: { 'x-tenant': 'acme' } }); // headers merge, plugins concat
 ```
 
-`RequestOptions` (per-call): `method` `headers` `body` `query` `baseURL` `responseType`
-`throwOnError` `transform` + any `RequestInit` field (incl. `signal`).
+`RequestOptions` (per-call): `method` (LiteralUnion — verbs autocomplete, any string ok)
+`headers` `body` `query` `baseURL` `responseType` `throwOnError` (`boolean` or
+`(status) => boolean` predicate) `transform` + any `RequestInit` field (incl. `signal`).
 `CorgiOptions` (client-level, on `create`/`extend`): `baseURL` `headers` `throwOnError`
 `plugins` `fetch` + `credentials`/`mode`/`cache`/`redirect`/`referrer`/`referrerPolicy`.
 Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
@@ -45,6 +46,8 @@ Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 3. **Non-2xx throws `HttpError`** by default (unlike native `fetch`). Don't check `res.ok`; catch,
    or pass `throwOnError: false`, or use `.raw()`.
 4. **`throwOnError: false` returns the parsed body typed as `<T>`** even on errors — narrow it.
+   A `(status) => boolean` predicate throws selectively (e.g. `(s) => s >= 500`); the non-thrown
+   branch still returns the parsed `<T>` without surfacing status.
 5. **204/205/304 and HEAD resolve to `undefined`** regardless of `<T>`. `head()` is typed `Promise<undefined>`.
 6. **Retry skips non-replayable bodies:** a `ReadableStream` body is never retried, even on GET.
 7. **`abortPrevious` is stateful** — one client instance per logical stream; on servers build the
@@ -181,7 +184,8 @@ const res = await fetchX('https://api.example.com/data'); // raw Response (no pa
 
 ## Error taxonomy (name-based guards)
 
-- `HttpError` — non-2xx. Fields: `status`, `statusText`, `url`, `response` (readable), `data` (parsed body).
+- `HttpError<T=unknown>` — non-2xx. Fields: `status`, `statusText`, `url`, `response` (readable),
+  `data` (parsed body). Type the payload via the guard: `isHttpError<ApiError>(e)` → `e.data: ApiError`.
 - `"TimeoutError"` — a deadline fired (`withTimeout` or `AbortSignal.timeout`). `isTimeoutError`.
 - `"AbortError"` — caller cancel or `abortPrevious` supersede. `isAbortError`.
 - `ValidationError` — schema failure; `.issues`. `isValidationError`.

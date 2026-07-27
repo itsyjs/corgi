@@ -8,7 +8,8 @@ passes straight through.
 
 ```ts
 interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
-  method?: string;
+  /** LiteralUnion of the standard verbs — they autocomplete, any string still works. */
+  method?: HttpMethod | (string & {});
   headers?: HeadersInit;
   /** Plain object/array -> JSON; BodyInit passes through. `object` (not `Record<string, unknown>`)
    * so interface DTOs type-check (TS#15300); a Map/Set/class instance type-checks but won't JSON-serialize cleanly. */
@@ -19,11 +20,59 @@ interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'
   baseURL?: string;
   /** Force a parse mode instead of sniffing the content-type. */
   responseType?: ParseAs;
-  /** Throw HttpError on non-2xx. Default true. */
-  throwOnError?: boolean;
+  /** Throw HttpError on non-2xx. Default true. A `(status) => boolean` predicate throws selectively. */
+  throwOnError?: boolean | ((status: number) => boolean);
   /** Post-parse hook: map/validate the value. Its return type becomes the result. */
   transform?: (value: unknown, response: Response) => unknown;
 }
+```
+
+### Selective throwing
+
+`throwOnError` accepts a `(status) => boolean` predicate: return `true` to throw
+[`HttpError`](/api/errors#httperror), `false` to resolve with the parsed body
+(typed as your `<T>`). Useful when an API returns a body you want to read on some
+4xx, while still throwing on server errors:
+
+```ts twoslash
+import { corgi } from '@itsy/corgi';
+interface User {}
+interface ApiError {}
+// ---cut---
+// Client-wide policy: throw 5xx, hand back 4xx bodies.
+const api = corgi.create({
+  baseURL: 'https://api.example.com',
+  throwOnError: (status) => status >= 500,
+});
+
+const user = await api.get<User | ApiError>('/users/1'); // 404/422 body returned; 500 throws
+```
+
+Per call, tolerate a single status and keep its parsed body:
+
+```ts twoslash
+import { corgi } from '@itsy/corgi';
+const api = corgi.create({ baseURL: 'https://api.example.com' });
+interface Order {}
+interface Conflict {}
+declare const draft: object;
+// ---cut---
+const out = await api.post<Order | Conflict>('/orders', {
+  body: draft,
+  throwOnError: (s) => s !== 409, // everything but 409 throws; 409 body returned + parsed
+});
+```
+
+The non-thrown branch returns the parsed body **without** surfacing the status, so
+the predicate shines when you WANT the error body. To branch on status and remap
+(e.g. 404 → `null`), a `try/catch` + [`isHttpError`](/api/errors#ishttperror)
+reads cleaner.
+
+### `HttpMethod`
+
+```ts twoslash
+import type { HttpMethod } from '@itsy/corgi';
+//          ^?
 ```
 
 ::: info Pipeline config is client-level
@@ -43,7 +92,8 @@ Corgi-level defaults, merged into every request.
 interface CorgiOptions {
   baseURL?: string;
   headers?: HeadersInit;
-  throwOnError?: boolean;
+  /** Boolean, or a `(status) => boolean` predicate for a client-wide throw policy. */
+  throwOnError?: boolean | ((status: number) => boolean);
   /** Middleware plugins; built into the pipeline once and reused (order-sorted). */
   plugins?: readonly Plugin[];
   /** Custom fetch implementation for this client. */

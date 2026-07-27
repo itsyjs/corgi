@@ -6,20 +6,21 @@ Thrown by the client when a response has a non-2xx status (unless
 `throwOnError: false`).
 
 ```ts
-class HttpError extends Error {
+class HttpError<T = unknown> extends Error {
   readonly name: 'HttpError';
   readonly status: number;
   readonly statusText: string;
   readonly url: string;
   readonly response: Response; // a clone, taken before reading — still readable
-  readonly data: unknown; //     best-effort parse of the error body
+  readonly data: T; //           best-effort parse of the error body
 }
 ```
 
 - `response` is a **clone** taken before the body was read, so
   `await err.response.text()` / `.json()` still works.
 - `data` is a best-effort parse (JSON or text) of the error body — typed `unknown`
-  because error shapes aren't known at compile time.
+  by default (error shapes aren't known at compile time), but the class is generic:
+  name the payload via the guard to type `data` without a cast (see below).
 
 ```ts twoslash
 import { corgi, isHttpError } from '@itsy/corgi';
@@ -36,12 +37,33 @@ try {
 ## `isHttpError`
 
 ```ts
-function isHttpError(error: unknown): error is HttpError;
+function isHttpError<T = unknown>(error: unknown): error is HttpError<T>;
 ```
 
 Type guard for `HttpError`. Checked by **name**, not `instanceof`, so it stays
 correct across iframes, web workers, and vm contexts, and duplicate bundled copies —
 both cases where `instanceof` silently returns `false`.
+
+Name the error payload to type `err.data` with no cast. The type argument is an
+unchecked assertion (the guard only verifies it's an `HttpError`), so pass the
+shape you know the endpoint returns:
+
+```ts twoslash
+import { corgi, isHttpError } from '@itsy/corgi';
+interface ApiError {
+  code: string;
+  message: string;
+}
+// ---cut---
+try {
+  await corgi.get('https://api.example.com/users/1');
+} catch (err) {
+  if (isHttpError<ApiError>(err)) {
+    err.data.code;
+    //       ^?
+  }
+}
+```
 
 ## `isTimeoutError`
 

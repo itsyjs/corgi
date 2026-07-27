@@ -22,7 +22,7 @@ export type { Fetcher, Plugin } from './core.ts';
 
 // Corgi: the one-off singleton `corgi` (+ `corgi.create()` for configured instances)
 export { corgi } from './corgi.ts';
-export type { Corgi, CorgiAPI, Call, CorgiOptions, RequestOptions, MappedResponse } from './corgi.ts';
+export type { Corgi, CorgiAPI, Call, CorgiOptions, RequestOptions, MappedResponse, HttpMethod } from './corgi.ts';
 export type { ParseAs } from './parse.ts';
 export type { Query, QueryValue } from './url.ts';
 

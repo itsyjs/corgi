@@ -100,11 +100,13 @@ try {
 }
 
 await api.get('/maybe', { throwOnError: false }); // non-2xx resolves to the parsed body (typed as <T> — narrow it)
+await api.get('/maybe', { throwOnError: (s) => s >= 500 }); // predicate: throw 5xx, hand back 4xx bodies
 const res = await api.raw('/download'); // raw Response: no parse, no throw
 ```
 
 - Non-2xx **throws `HttpError`** by default (the opposite of native `fetch`). `err.response` is
   unread and re-readable; guards are **name-based**, so they survive iframes/workers/duplicate bundles.
+  Type the error body via the guard: `if (isHttpError<ApiError>(err)) err.data // ApiError`.
 - Parsing sniffs `content-type`: `application/json` and `+json` suffixes (e.g. `application/problem+json`)
   -> JSON; `text/*` and unknown types -> text (never guessed as JSON); everything else -> `Blob`;
   204/205/304 and HEAD -> `undefined`. Forcing `responseType: 'json'` on non-JSON throws `SyntaxError`.

@@ -68,6 +68,28 @@ suite('corgi', () => {
     assert.deepEqual(data, { error: 'boom' });
   });
 
+  test('throwOnError predicate throws selectively by status', async () => {
+    // One client, one policy: throw 5xx, hand back 4xx bodies.
+    const api = corgi.create({
+      fetch: async (url) => json({ where: String(url) }, { status: String(url).endsWith('/boom') ? 500 : 404 }),
+      throwOnError: (status) => status >= 500,
+    });
+
+    // 404 is below the threshold -> resolves with the parsed body (not thrown).
+    assert.deepEqual(await api.get('/missing'), { where: '/missing' });
+
+    // 500 is at/above the threshold -> throws HttpError.
+    let err: unknown;
+    await api.get('/boom').then(
+      () => assert.fail('expected the request to reject'),
+      (e: unknown) => {
+        err = e;
+      },
+    );
+    if (!isHttpError(err)) return assert.fail(`expected HttpError, got ${String(err)}`);
+    assert.equal(err.status, 500);
+  });
+
   test('responseType narrows parsing (text)', async () => {
     const api = corgi.create({ fetch: async () => json({ a: 1 }) });
     const text = await api.get('/x', { responseType: 'text' });

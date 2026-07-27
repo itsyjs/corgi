@@ -79,7 +79,17 @@ export const corgi: CorgiChonkAPI = Object.assign(createCorgi(), { create: creat
 /* from './index.ts' (that would clash on the name).                            */
 
 export { compose, order, ORDER, HttpError, isHttpError, isTimeoutError, isAbortError } from './index.ts';
-export type { Fetcher, Plugin, Call, RequestOptions, MappedResponse, ParseAs, Query, QueryValue } from './index.ts';
+export type {
+  Fetcher,
+  Plugin,
+  Call,
+  RequestOptions,
+  MappedResponse,
+  ParseAs,
+  Query,
+  QueryValue,
+  HttpMethod,
+} from './index.ts';
 export type { Corgi, CorgiAPI, CorgiOptions, RetryOptions };
 
 // Plugins: the ones used above are re-exported from their local bindings; the

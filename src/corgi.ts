@@ -20,6 +20,17 @@ import { joinURL, withQuery, type Query } from './url.ts';
 import { parseResponse, type ParseAs } from './parse.ts';
 import { HttpError } from './error.ts';
 
+/** The standard HTTP methods, used to give `method` autocomplete. */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+
+/**
+ * A union that still autocompletes its literal members but accepts any other
+ * `U` too. `(string & {})` is the well-known trick: it's assignable to/from
+ * `string`, so it widens the union to all strings WITHOUT collapsing the literal
+ * arm (which would kill editor autocomplete). Erased at build — costs no bytes.
+ */
+type LiteralUnion<T extends U, U = string> = T | (U & {});
+
 /**
  * Maps a `responseType` to the value type it produces. `json` (the default)
  * falls through to the caller's `<T>` generic; the rest are fixed platform types.
@@ -52,7 +63,10 @@ export type MappedResponse<P extends ParseAs, T> = [P] extends ['text']
  * (`@itsy/corgi/timeout[-modern]`, client-level).
  */
 export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
-  method?: string;
+  /** HTTP method. Typed as a {@link LiteralUnion} of the standard verbs, so the
+   * common ones autocomplete while any custom method string is still accepted.
+   * (The verb shortcuts — `get`/`post`/… — set this for you.) */
+  method?: LiteralUnion<HttpMethod>;
   /**
    * Per-call headers. Merged case-insensitively, so `Content-Type` and
    * `content-type` collapse to one (never duplicated). Precedence low -> high:
@@ -97,8 +111,15 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'h
    * a non-2xx resolves instead of throwing and you get the PARSED body — on an
    * error that's the error payload, still typed as your `<T>`, so narrow it
    * yourself. For the raw `Response` (no parse, no throw) use `.raw()`.
+   *
+   * Pass a PREDICATE `(status) => boolean` for per-status control: return `true`
+   * to throw, `false` to resolve with the parsed body. Handy when an API returns
+   * a meaningful body on some 4xx you want to read while still throwing on 5xx —
+   * e.g. `throwOnError: (s) => s >= 500`. The non-thrown body is typed as your
+   * `<T>` (status isn't returned alongside it), so this shines when you WANT the
+   * error body; to branch on status and remap, a `try/catch` + `isHttpError` still reads cleaner.
    */
-  throwOnError?: boolean;
+  throwOnError?: boolean | ((status: number) => boolean);
   /** Post-parse hook: map/validate the value. Its return type becomes the result.
    * Runs after parsing; overrides both `responseType` and `<T>`. Powers `schema()`. */
   transform?: (value: unknown, response: Response) => unknown;
@@ -111,7 +132,10 @@ export interface CorgiOptions {
    * `headers` entry overrides the same key here, which overrides the auto JSON
    * `content-type`. */
   headers?: HeadersInit;
-  throwOnError?: boolean;
+  /** Client-wide throw policy. Boolean, or a `(status) => boolean` predicate to
+   * throw selectively (e.g. `(s) => s >= 500` — throw server errors, hand back
+   * 4xx bodies). A per-call `throwOnError` overrides this. See {@link RequestOptions.throwOnError}. */
+  throwOnError?: boolean | ((status: number) => boolean);
   /** Middleware plugins for this client. Built into the pipeline once, reused
    * across calls (so stateful plugins like abortPrevious keep their memory).
    * Order-sorted by their `order` hint — see {@link ORDER}. */
@@ -226,8 +250,11 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
   async function run(url: string, options: RequestOptions = {}): Promise<unknown> {
     const res = await exec(url, options);
 
+    // `throwOnError` may be a boolean or a `(status) => boolean` predicate; a
+    // per-call value overrides the client default, which overrides the `true` default.
     const throwOnError = options.throwOnError ?? defaults.throwOnError ?? true;
-    if (!res.ok && throwOnError) {
+    const shouldThrow = typeof throwOnError === 'function' ? throwOnError(res.status) : throwOnError;
+    if (!res.ok && shouldThrow) {
       // Clone before reading so `err.response` remains fully readable afterwards.
       const data = await parseResponse(res.clone(), options.method).catch(() => undefined);
       throw new HttpError(res, data);
