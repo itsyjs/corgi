@@ -30,7 +30,7 @@ Sorts plugins by their `order` hint, then folds them outermost-first (lower `ord
 = further out). The sort is stable, so plugins that share a hint, or have none, keep
 the order you passed: `compose(a, b, c)(base) === a(b(c(base)))` for untagged
 plugins. Call the result with a base `Fetcher`, or omit it to use a bind-safe global
-`fetch`.
+`fetch`. To override the hints entirely, nest plugins by hand: `a(b(c(base)))`.
 
 ```ts twoslash
 import { compose, order, ORDER, type Fetcher } from '@itsy/corgi';
@@ -39,13 +39,6 @@ declare const logging: import('@itsy/corgi').Plugin;
 const call = compose(logging)(); // -> Fetcher
 const res = await call('https://example.com');
 ```
-
-::: tip
-`compose` sorts by `order`, so plugins slot into the right sequence no matter how
-you list them (see [`ORDER`](#order)). Plugins with the same hint, or none, keep the
-order you passed. Need to override the hints entirely? Nest plugins by hand:
-`a(b(c(base)))`.
-:::
 
 ## `order`
 

@@ -59,8 +59,8 @@ await api.get('/report', { signal: AbortSignal.timeout(30_000) });
 
 Use both together to cap each attempt _and_ the whole call. Whichever fires first wins.
 
-::: tip The same budget on every call
 A per-request `signal` is something you have to remember to pass. To make the total
-budget a client-level default instead, see
-[Per-attempt + total timeouts](/recipes/total-timeout).
-:::
+budget a client-level default instead, re-tag a second `withTimeout` to sit outside
+retry.
+
+<small class="read-more">[Read more: per-attempt + total timeouts →](/recipes/total-timeout)</small>

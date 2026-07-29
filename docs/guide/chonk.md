@@ -34,4 +34,4 @@ const User = z.object({ id: z.number(), name: z.string() });
 const user = await api.get('/users/1', { transform: schema(User) });
 ```
 
-<small class="read-more">[Read more about schema here →](/plugins/schema)</small>
+<small class="read-more">[Read more: schema →](/plugins/schema)</small>

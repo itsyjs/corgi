@@ -11,6 +11,28 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 // a user/org site or a custom domain.
 const base = '/corgi/';
 
+/**
+ * Docs authoring conventions — keep these consistent across docs/**.
+ *
+ *   ::: tip      An optional extra that improves the result. The reader can skip it
+ *                and still succeed.
+ *   ::: info     A scope or constraint on what was just described ("only applies
+ *                when…"). Corrects a likely wrong assumption.
+ *   ::: warning  Ignoring it causes a real bug — state shared across requests, a
+ *                token-refresh storm, a corrupted upload.
+ *   ::: details  Correct but long: mechanics, rationale, extra examples. The
+ *                summary line carries the takeaway so the block can stay closed.
+ *
+ *   <small class="read-more">  Exactly one trailing cross-link, always phrased
+ *                              `[Read more: <topic> →](/path)`.
+ *   <small>                    A secondary sentence supporting an adjacent code
+ *                              block (lead-in above, or footnote below). Never a link.
+ *
+ * Always give a block a title; VitePress otherwise renders a bare "TIP" / "INFO".
+ * Prefer prose or a plain list over a block when the content IS the section — a
+ * container should be an aside, not the body.
+ */
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: '@itsy/corgi',

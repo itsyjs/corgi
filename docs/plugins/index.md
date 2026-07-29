@@ -12,7 +12,7 @@ Each built-in plugin lives on its own import path, so it costs **zero bytes** un
 | [`abortPrevious`](/plugins/abort-previous) | `@itsy/corgi/abort-previous` | cancel the in-flight request when a new one starts (avoids racing)    | `cancel` (100)  | **yes**   |
 | [`schema`](/plugins/schema)                | `@itsy/corgi/schema`         | runtime-validate a response body                                      | N/A             | no        |
 
-::: info the schema plugin
+::: info The schema plugin
 `schema` isn't technically a plugin (it's a `transform`), but it's opt-in and extends
 what a call can do, so it's listed here for the overview.
 
@@ -38,7 +38,7 @@ const api = corgi.create({
 await api.get('/users'); // parsed, typed, throws on non-2xx
 ```
 
-::: tip Plugin order
+::: info Plugin order
 Plugins are sorted automatically by an internal value, so you don't have to worry about the order in the `plugins` array.
 :::
 
@@ -81,7 +81,8 @@ const data = await res.json(); // you handle the Response yourself
 - `compose` still sorts by `ORDER` just like the `plugins` array of Corgi.
 - Prefer `compose(...)()` over `plugin(fetch)` as `compose` with no base uses a
   bind-safe global `fetch`
-  :::
+
+:::
 
 <small>If you want to use a custom fetch, pass it to `compose` instead of calling it with no arguments.</small>
 

@@ -63,7 +63,7 @@ const withAuthRefresh = order(ORDER.retry - 1, (next: Fetcher): Fetcher => async
 });
 ```
 
-::: tip Single-flight the refresh
+::: warning Single-flight the refresh
 If many requests get a 401 at once, you don't want a refresh storm. Cache the
 in-flight refresh promise so concurrent callers share one refresh:
 

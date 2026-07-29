@@ -22,15 +22,14 @@ const myPlugin: Plugin =
   };
 ```
 
-::: tip Guidelines
+Three rules:
 
-- **Call `next(url, init)`** to continue the chain (or don't, to short-circuit the request!).
-- **Return a `Response`**. Plugins are pure `Response → Response`, so no parsing and
-  no throwing. You can read `res.status` and headers, but don't consume the body; the
+- Call `next(url, init)` to continue the chain, or don't, to short-circuit the request.
+- Return a `Response`. Plugins are pure `Response → Response`, so no parsing and no
+  throwing. You can read `res.status` and headers, but don't consume the body; the
   main client parses it.
-- **Forward `init` to `next`**. If you're modifying headers (f.ex), then you should do `await next(url, { ...init, headers })`.
-
-:::
+- Forward `init` to `next`. If you're modifying headers (f.ex), then you should do
+  `await next(url, { ...init, headers })`.
 
 ### Example: request logging + timing
 
@@ -95,10 +94,12 @@ yours does, it must live at the client level so the pipeline and its state are b
 once and reused. On a server, build such a client per request so unrelated requests
 don't share state.
 
+::: details A worked example: in-flight de-duplication
+
 ```ts twoslash
 import { order, ORDER, type Fetcher } from '@itsy/corgi';
 // ---cut---
-// A tiny in-flight de-duplicator: share one request across identical concurrent GETs.
+// Share one request across identical concurrent GETs.
 const dedupe = order(ORDER.dedupe, (next: Fetcher): Fetcher => {
   const inflight = new Map<string, Promise<Response>>();
   return (url, init) => {
@@ -112,7 +113,11 @@ const dedupe = order(ORDER.dedupe, (next: Fetcher): Fetcher => {
 });
 ```
 
-::: tip Coming from ofetch interceptors?
-A plugin covers all four ofetch hooks (`onRequest` / `onRequestError` / `onResponse` /
-`onResponseError`) and more. See [ofetch-style interceptors](/recipes/interceptors).
 :::
+
+## Coming from ofetch?
+
+A plugin covers all four of ofetch's hooks (`onRequest` / `onRequestError` /
+`onResponse` / `onResponseError`) and more.
+
+<small class="read-more">[Read more: ofetch-style interceptors →](/recipes/interceptors)</small>

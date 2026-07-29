@@ -56,7 +56,7 @@ Here `a`/`b`/`c` are untagged, so they keep the order you passed: `a` is the
 outermost layer (sees the request first, the response last) and `c` sits closest
 to the real `fetch`.
 
-::: tip compose sorts by order
+::: info compose sorts by order
 `compose` slots plugins by their `order` hint (below) before folding them. Plugins
 with the same hint — or none, like `a`/`b`/`c` here — keep the order you pass. To
 override the hints, nest the plugins by hand: `a(b(c(base)))`.

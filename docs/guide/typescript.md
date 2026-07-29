@@ -20,7 +20,7 @@ const user = await corgi.get<User>('/users/1');
 const raw = await corgi.get('/users/1');
 ```
 
-::: info
+::: info Applies to JSON responses only
 This generic is only used when `responseType` is json-ish
 :::
 

@@ -22,7 +22,7 @@ const User = z.object({ id: z.number(), name: z.string() });
 const user = await corgi.get('/users/1', { transform: schema(User) });
 ```
 
-::: tip
+::: info Return type comes from the schema
 Because `transform` drives the return type, no generic is needed — the type comes
 from the schema.
 :::

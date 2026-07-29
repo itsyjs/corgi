@@ -75,6 +75,6 @@ const api = corgi.create({
 const users = await api.get('/users'); // -> https://api.example.com/users
 ```
 
-::: tip
+::: tip Batteries included
 You can also get a batteries-included version of `corgi` from [`@itsy/corgi/chonk`](/guide/chonk) that includes all plugins!
 :::
