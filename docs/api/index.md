@@ -4,15 +4,15 @@ Every public export, by entry point.
 
 ## Entry points
 
-| import                                                     | exports                                                                                                             |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [`@itsy/corgi`](#itsy-corgi)                               | `corgi`, `compose`, `order`, `ORDER`, `HttpError`, `isHttpError`, `isTimeoutError`, `isAbortError` + types          |
-| [`@itsy/corgi/timeout`](/api/plugins#withtimeout)          | `withTimeout` (2022-safe)                                                                                           |
-| [`@itsy/corgi/timeout-modern`](/api/plugins#withtimeout)   | `withTimeout` (Baseline 2024)                                                                                       |
-| [`@itsy/corgi/retry`](/api/plugins#withretry)              | `withRetry`, type `RetryOptions`                                                                                    |
-| [`@itsy/corgi/abort-previous`](/api/plugins#abortprevious) | `abortPrevious`                                                                                                     |
-| [`@itsy/corgi/schema`](/api/plugins#schema)                | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                              |
-| [`@itsy/corgi/chonk`](/guide/chonk)                        | enhanced `corgi`, `CorgiChonkOptions`, and re-exports of everything above                                          |
+| import                                                     | exports                                                                                                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`@itsy/corgi`](#itsy-corgi)                               | `corgi`, `compose`, `order`, `ORDER`, `HttpError`, `isHttpError`, `isTimeoutError`, `isAbortError` + types |
+| [`@itsy/corgi/timeout`](/api/plugins#withtimeout)          | `withTimeout` (2022-safe)                                                                                  |
+| [`@itsy/corgi/timeout-modern`](/api/plugins#withtimeout)   | `withTimeout` (Baseline 2024)                                                                              |
+| [`@itsy/corgi/retry`](/api/plugins#withretry)              | `withRetry`, type `RetryOptions`                                                                           |
+| [`@itsy/corgi/abort-previous`](/api/plugins#abortprevious) | `abortPrevious`                                                                                            |
+| [`@itsy/corgi/schema`](/api/plugins#schema)                | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                     |
+| [`@itsy/corgi/chonk`](/guide/chonk)                        | enhanced `corgi`, `CorgiChonkOptions`, and re-exports of everything above                                  |
 
 ## `@itsy/corgi`
 

@@ -57,7 +57,7 @@ const api = corgi.create();
 await api.get('/report', { signal: AbortSignal.timeout(30_000) });
 ```
 
-Use both together to cap each attempt *and* the whole call. Whichever fires first wins.
+Use both together to cap each attempt _and_ the whole call. Whichever fires first wins.
 
 ::: tip The same budget on every call
 A per-request `signal` is something you have to remember to pass. To make the total
