@@ -30,9 +30,12 @@ interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'
 ### Selective throwing
 
 `throwOnError` accepts a `(status) => boolean` predicate: return `true` to throw
-[`HttpError`](/api/errors#httperror), `false` to resolve with the parsed body
-(typed as your `<T>`). Useful when an API returns a body you want to read on some
-4xx, while still throwing on server errors:
+[`HttpError`](/api/errors#httperror), `false` to resolve with the parsed body typed
+as your `<T>`.
+
+::: details Client-wide and per-call examples
+Useful when an API returns a body you want to read on some 4xx, while still throwing
+on server errors:
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -63,10 +66,11 @@ const out = await api.post<Order | Conflict>('/orders', {
 });
 ```
 
-The non-thrown branch returns the parsed body **without** surfacing the status, so
-the predicate shines when you WANT the error body. To branch on status and remap
-(e.g. 404 → `null`), a `try/catch` + [`isHttpError`](/api/errors#ishttperror)
-reads cleaner.
+The non-thrown branch returns the parsed body without surfacing the status, so a
+predicate is the right tool when you want the error body. To branch on status and
+remap (e.g. 404 → `null`), a `try/catch` plus
+[`isHttpError`](/api/errors#ishttperror) reads cleaner.
+:::
 
 ### `HttpMethod`
 
@@ -78,9 +82,8 @@ import type { HttpMethod } from '@itsy/corgi';
 There is no per-call `plugins`, `fetch`, or `timeout`. Those shape the pipeline
 and live on [`CorgiOptions`](#corgioptions) / `extend`.
 
-For a per-call deadline, pass the standard `signal: AbortSignal.timeout(ms)` — a
-**total** budget for that call. For a **per-attempt** deadline, add the
-[`withTimeout`](/plugins/timeout) plugin (client-level).
+For a per-call deadline, pass the standard `signal: AbortSignal.timeout(ms)`. See
+[per-attempt vs total budget](/plugins/timeout#per-attempt-vs-total-budget).
 :::
 
 ## `CorgiOptions`

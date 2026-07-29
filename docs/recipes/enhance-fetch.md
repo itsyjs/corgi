@@ -1,17 +1,16 @@
 # Enhance native `fetch`
 
-You don't need the client to use plugins. Because a plugin is just `fetch`-shaped
-middleware, you can compose a few into a **drop-in `fetch`** — same call signature,
-same raw `Response`, just with retry/timeout/etc. layered on.
+Plugins are `fetch`-shaped middleware, so you can compose a few into a drop-in
+`fetch` without adopting the client. Same call signature, same raw `Response`.
 
-## The basic move
+## Usage
 
 ```ts twoslash
 import { compose } from '@itsy/corgi';
 import { withRetry } from '@itsy/corgi/retry';
 import { withTimeout } from '@itsy/corgi/timeout';
 
-// Same signature as fetch — returns a raw Response:
+// Same signature as fetch, returns a raw Response:
 const fetchX = compose(withRetry(3), withTimeout(5000))();
 
 const res = await fetchX('https://api.example.com/data');
@@ -20,9 +19,9 @@ if (res.ok) {
 }
 ```
 
-`compose(...)()` with no base uses a **bind-safe** global `fetch` (safe on
-Cloudflare Workers, where a detached `fetch` throws). To wrap a _specific_ fetch —
-a polyfill, a mock, an instrumented one — pass it as the base:
+`compose(...)()` with no base uses a bind-safe global `fetch`, which matters on
+Cloudflare Workers where a detached `fetch` throws. To wrap a specific fetch (a
+polyfill, a mock, an instrumented one) pass it as the base.
 
 ```ts twoslash
 import { compose } from '@itsy/corgi';
@@ -32,22 +31,17 @@ declare const undiciFetch: typeof fetch;
 const fetchX = compose(withRetry(3))(undiciFetch);
 ```
 
-## What you get (and don't)
+## What you get
 
-Plugins are pure `Response → Response`:
-
-- ✅ retry, timeout, cancel-previous, your own middleware
-- ❌ **no** JSON parsing, **no** throw-on-non-2xx — you handle the `Response`
-  yourself (that's the [client's](/guide/corgi) job)
-
-If you find yourself re-implementing "parse + throw on error", that's the signal to
-switch to `corgi` — you can pass the exact same plugins to it.
+Retry, timeout, cancel-previous, and any middleware you write. Plugins are pure
+`Response → Response`, so there's no JSON parsing and no throw-on-non-2xx. You
+handle the `Response` yourself; that part is the [client's](/guide/corgi) job.
 
 ## Ordering is handled for you
 
-`compose` sorts plugins by their `ORDER` hint (just like `corgi`, which is
-built on it), so the array order doesn't matter — retry always ends up **outside**
-timeout, giving each attempt a fresh deadline and retrying a fired timeout:
+`compose` sorts plugins by their `ORDER` hint, just like `corgi`, which is built on
+it. Array order doesn't matter, so retry always ends up outside timeout: each attempt
+gets a fresh deadline, and a fired timeout is retried.
 
 ```ts twoslash
 import { compose } from '@itsy/corgi';
@@ -59,17 +53,21 @@ const a = compose(withRetry(3), withTimeout(5000))();
 const b = compose(withTimeout(5000), withRetry(3))();
 ```
 
-Want one deadline for **all** attempts combined instead of per-attempt? Don't
-reorder — pass a total-time signal: `signal: AbortSignal.timeout(5000)`.
+Want one deadline across all attempts instead of per-attempt? Don't reorder, pass
+`signal: AbortSignal.timeout(ms)` on the call.
 
-Need a layering that deliberately fights the hints? A plugin is just
-`(next) => Fetcher`, so nest them by hand to bypass the sort:
+<small class="read-more">[Read more: per-attempt vs total budget →](/plugins/timeout#per-attempt-vs-total-budget)</small>
+
+::: details Deliberately fighting the hints
+A plugin is just `(next) => Fetcher`, so nest them by hand to bypass the sort.
 
 ```ts twoslash
 import { compose } from '@itsy/corgi';
 import { withRetry } from '@itsy/corgi/retry';
 import { withTimeout } from '@itsy/corgi/timeout';
 // ---cut---
-// timeout OUTSIDE retry — nest by hand; each compose()() gives a bind-safe base.
+// timeout OUTSIDE retry; each compose()() gives a bind-safe base.
 const totalDeadline = compose(withTimeout(5000))(compose(withRetry(3))());
 ```
+
+:::

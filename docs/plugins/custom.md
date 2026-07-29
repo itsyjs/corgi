@@ -1,8 +1,7 @@
 # Write your own plugin
 
-A plugin is just middleware around `fetch`. If you can write a function, you can
-write a plugin — logging, auth, metrics, caching, and mocking are all a handful of
-lines. This is the composability the whole library is built on.
+A plugin is middleware around `fetch`. Logging, auth, metrics, caching, and mocking
+are each a handful of lines.
 
 ## The shape
 
@@ -25,11 +24,11 @@ const myPlugin: Plugin =
 
 ::: tip Guidelines
 
-- **Call `next(url, init)`** to continue the chain (or don't to short-circuit the request!).
-- **Return a `Response`**, plugins are pure `Response → Response` — no parsing, no
-  throwing. You can read `res.status` and headers, but don't consume the body; the
+- **Call `next(url, init)`** to continue the chain (or don't, to short-circuit the request!).
+- **Return a `Response`**. Plugins are pure `Response → Response`, so no parsing and
+  no throwing. You can read `res.status` and headers, but don't consume the body; the
   main client parses it.
-- **Forward `init` to `next`**, if you're modifying headers (f.ex), then you should do `await next(url, { ...init, headers })`.
+- **Forward `init` to `next`**. If you're modifying headers (f.ex), then you should do `await next(url, { ...init, headers })`.
 
 :::
 
@@ -84,17 +83,17 @@ const api = corgi.create({ plugins: [withLog] });
 const fetchL = compose(withLog)();
 ```
 
-Both paths honor your `order` hint — `corgi` is built on `compose`, and
-`compose` sorts by `order` before folding. List plugins in any order; they slot
+Both paths honor your `order` hint. `corgi` is built on `compose`, and `compose`
+sorts by `order` before folding, so you can list plugins in any order and they slot
 correctly.
 
 ## Stateful plugins
 
 A plugin can keep state in the closure created when it's applied (that's how
 [`abortPrevious`](/plugins/abort-previous) remembers the in-flight request). If
-yours does, it **must** live at the client level so the pipeline — and its state —
-is built once and reused. On a server, build such a client **per request** so
-unrelated requests don't share state.
+yours does, it must live at the client level so the pipeline and its state are built
+once and reused. On a server, build such a client per request so unrelated requests
+don't share state.
 
 ```ts twoslash
 import { order, ORDER, type Fetcher } from '@itsy/corgi';

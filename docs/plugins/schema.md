@@ -1,11 +1,11 @@
 # schema
 
-Runtime validation via [Standard Schema](https://standardschema.dev) — the
+Runtime validation via [Standard Schema](https://standardschema.dev), the
 vendor-neutral interface implemented by Zod 3.24+, Valibot, ArkType, and others.
 `schema()` turns the `<T>` cast into a real guarantee.
 
 `@itsy/corgi/schema` depends only on the Standard Schema _type_ (inlined), so it
-stays zero-dependency — the actual validator is whatever library you already use.
+stays zero-dependency. The actual validator is whatever library you already use.
 
 ## `schema()` as a transform
 
@@ -29,9 +29,8 @@ from the schema.
 
 ## Errors
 
-A failed validation throws a `ValidationError` — distinct from
-[`HttpError`](/api/errors) and network errors — carrying the
-validator's `issues`.
+A failed validation throws a `ValidationError` carrying the validator's `issues`,
+distinct from [`HttpError`](/api/errors) and network errors.
 
 ```ts twoslash
 import { isValidationError } from '@itsy/corgi/schema';
@@ -47,8 +46,9 @@ if (isValidationError(err)) {
 ## Any Standard Schema validator works
 
 ```ts
-// Zod, Valibot, ArkType — all expose the same `~standard` contract:
+// Zod, Valibot, ArkType all expose the same `~standard` contract:
 import * as v from 'valibot';
+import { corgi } from '@itsy/corgi';
 import { schema } from '@itsy/corgi/schema';
 
 const User = v.object({ id: v.number(), name: v.string() });

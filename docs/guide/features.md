@@ -49,7 +49,7 @@ const text = await corgi.get('/x', { responseType: 'text' }); // string
 
 <small class="read-more">[Read more: TypeScript →](/guide/typescript)</small>
 
-## Request building, handled
+## Request building
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';

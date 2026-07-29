@@ -28,21 +28,20 @@ import { corgi } from '@itsy/corgi';
 await corgi.get('/search', {
   query: { foo: 'bar', tag: ['a', 'b'], page: 2, cursor: null },
 });
-// -> /search?q=ada&tag=a&tag=b&page=2      (cursor skipped)
+// -> /search?foo=bar&tag=a&tag=b&page=2    (cursor skipped)
 ```
 
 <small>Values (and keys) are encoded via `URLSearchParams`, so spaces, `&`, unicode, etc.
 are escaped correctly.</small>
 
-::: details How attributes are processed
+::: details How query is processed
 
-- `null`/`undefined` values are skipped
 - arrays expand to repeated keys
 - any existing query and `#hash` is preserved
 
-Both `null` and `undefined` are dropped entirely. This module does **not**
-emit a value-less `?flag` for `null` the way ofetch does. The web platform's
-`URLSearchParams` can't represent a bare key (it normalizes `?flag` to `flag=`) and this module matches that behavior.
+Both `null` and `undefined` are dropped entirely. Corgi does **not** emit a
+value-less `?flag` for `null` the way ofetch does. The web platform's
+`URLSearchParams` can't represent a bare key (it normalizes `?flag` to `flag=`) and Corgi matches that behavior.
 
 If you truly need a bare flag, put it in the URL string on a call that doesn't also pass `query`.
 :::
@@ -61,10 +60,10 @@ form.set('file', new Blob(['hi']), 'hi.txt');
 await corgi.post('/upload', { body: form });
 ```
 
-::: details How attributes are processed
+::: details How body is processed
 A plain object or array is JSON-encoded and the `content-type` is set automatically.
 
-Everything 'native' passes through untouched for maximum compatibility:
+Everything 'native' passes through untouched:
 
 - `FormData`
 - `Blob`/`File`
@@ -101,7 +100,7 @@ This means a caller header always wins.
 
 ## Everything else
 
-Any standard `RequestInit` field you set — `signal`, `mode`, `cache`, `priority`, etc. are forwarded to `fetch` unchanged.
+Any standard `RequestInit` field you set (`signal`, `mode`, `cache`, `priority`, etc.) is forwarded to `fetch` unchanged.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';

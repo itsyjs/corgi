@@ -1,31 +1,21 @@
 # ofetch-style interceptors
 
-[ofetch](https://github.com/unjs/ofetch) exposes four lifecycle
-_interceptors_ — `onRequest`, `onRequestError`, `onResponse`, `onResponseError`.
-
-`@itsy/corgi` has no separate interceptor API because a [plugin](/plugins/custom) —
-middleware around `fetch` — already covers all four, and adds short-circuiting,
-ordering, and state on top.
+[ofetch](https://github.com/unjs/ofetch) exposes four lifecycle _interceptors_.
+Corgi has no separate interceptor API because a [plugin](/plugins/custom) already
+covers all four, and adds short-circuiting, ordering, and state on top.
 
 | ofetch                               | in a plugin                                |
 | ------------------------------------ | ------------------------------------------ |
-| `onRequest({ corgi, options })`      | code before `await next(url, init)`        |
+| `onRequest({ request, options })`    | code before `await next(url, init)`        |
 | `onRequestError({ ..., error })`     | wrap `next` in `try` / `catch`             |
 | `onResponse({ ..., response })`      | code after `await next` (status + headers) |
 | `onResponseError({ ..., response })` | after `next`, guard on `!res.ok`           |
 
-## Not an interceptor: `timeout`
+ofetch's `timeout: ms` isn't a lifecycle hook, so it maps to a deadline instead. Per
+call, that's `signal: AbortSignal.timeout(ms)`. On every call, it's the
+[`withTimeout(ms)`](/plugins/timeout) plugin.
 
-ofetch's `timeout: ms` isn't a lifecycle hook, so it's not in the table above. Map it
-to a deadline instead:
-
-| ofetch                     | corgi                                                          |
-| -------------------------- | -------------------------------------------------------------- |
-| `timeout: ms` (per call)   | `signal: AbortSignal.timeout(ms)` — TOTAL budget for that call |
-| `timeout: ms` (every call) | the [`withTimeout(ms)`](/plugins/timeout) plugin — PER-ATTEMPT |
-
-Want both a per-attempt cap and one total budget? See
-[Per-attempt + total timeouts](/recipes/total-timeout).
+<small class="read-more">[Read more: per-attempt vs total budget →](/plugins/timeout#per-attempt-vs-total-budget)</small>
 
 ## All four in one plugin
 
@@ -57,9 +47,10 @@ const withInterceptors: Plugin =
   };
 ```
 
-## onRequest — modify the outgoing request
+## The individual hooks
 
-A plugin receives the **final** `url` string and `RequestInit` - the `query` object is
+::: details onRequest, modify the outgoing request
+A plugin receives the final `url` string and `RequestInit`. The `query` object is
 already merged into the URL and the body is already serialized.
 
 ```ts twoslash
@@ -74,9 +65,10 @@ const withTimestamp: Plugin =
   };
 ```
 
-## onRequestError — the fetch threw
+:::
 
-Wrap `next` in `try`/`catch`. The error guards help tell the causes apart.
+::: details onRequestError, the fetch threw
+Wrap `next` in `try`/`catch`. The error guards tell the causes apart.
 
 ```ts twoslash
 import { isAbortError, isTimeoutError } from '@itsy/corgi';
@@ -96,15 +88,16 @@ const withRequestErrorLog: Plugin =
   };
 ```
 
-## onResponse / onResponseError — react to the result
+:::
 
-Plugins see the raw `Response` (status, headers) but **must not read the body** — the
-client parses it once, after the pipeline. So split by what you need:
+::: details onResponse / onResponseError, react to the result
+Plugins see the raw `Response` (status, headers) but must not read the body, since
+the client parses it once after the pipeline. Split by what you need:
 
-- status / headers → a plugin, below.
-- the **parsed** value → a per-call [`transform`](/guide/responses) or
+- status / headers: a plugin, below.
+- the parsed value: a per-call [`transform`](/guide/responses) or
   [`schema`](/plugins/schema).
-- a non-2xx **with its parsed body** at the call site → the thrown `HttpError`
+- a non-2xx with its parsed body at the call site: the thrown `HttpError`
   (see [Error handling](/recipes/error-handling)).
 
 ```ts twoslash
@@ -121,14 +114,18 @@ const withResponseLog: Plugin =
   };
 ```
 
-Two classic `onResponseError` jobs have dedicated homes: refreshing a token on `401`
-is [Auth & token refresh](/recipes/auth-refresh); retrying transient statuses is
+:::
+
+Two classic `onResponseError` jobs have dedicated pages: refreshing a token on `401`
+is [Auth & token refresh](/recipes/auth-refresh), retrying transient statuses is
 [retry](/plugins/retry).
 
-## Arrays of interceptors → just add plugins
+## Shared and stacked interceptors
 
-ofetch takes an array of `onRequest` fns; here you add multiple plugins. `compose`
-chains them and sorts by their `order` hint:
+ofetch takes an array of `onRequest` fns; here you add multiple plugins and `compose`
+chains them, sorted by their `order` hint. `ofetch.create({ onRequest })` is
+`corgi.create({ plugins: [...] })`, and [`extend`](/guide/corgi#extend) derives scoped
+children with plugins combining rather than replacing.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -139,24 +136,19 @@ declare const withInterceptors: Plugin;
 const api = corgi.create({ plugins: [withTimestamp, withInterceptors] });
 ```
 
-## Shared interceptors → `ofetch.create`
+::: details What plugins add, and two seams to watch
+Over interceptors you get short-circuiting (skip `next` to serve a cache or mock, or
+return a `Response` to recover from an error), ordering (the `order` hint slots each
+plugin correctly, e.g. auth once per call, outside retry), and state (closures hold
+in-flight maps, as `abortPrevious` and dedupe do).
 
-`ofetch.create({ onRequest })` is `corgi.create({ plugins: [...] })`. Derive scoped
-children with [`extend`](/guide/corgi#extend) — plugins combine, not replace.
+Two seams to keep in mind:
 
-## What plugins add over interceptors
-
-- **Short-circuit** — skip `next` to serve a cache/mock, or return a `Response` to
-  recover from an error.
-- **Ordering** — the `order` hint slots each plugin correctly (e.g. auth once per call,
-  outside retry).
-- **State** — closures hold in-flight maps (`abortPrevious`, dedupe).
-
-## Two seams to remember
-
-1. **Data lives at the client, not the plugin.** Plugins act on `(url, init) → Response`.
-   The `query`/`body` objects are serialized before the pipeline and the response body is
-   parsed after it — so touch URL/headers/BodyInit in a plugin, and the parsed value with
-   a per-call [`transform`](/guide/responses).
-2. **Plugins are client-level.** There are no per-call interceptors; vary behaviour with
+1. Data lives at the client, not the plugin. Plugins act on `(url, init) → Response`.
+   The `query`/`body` objects are serialized before the pipeline and the response body
+   is parsed after it, so touch URL/headers/BodyInit in a plugin, and the parsed value
+   with a per-call [`transform`](/guide/responses).
+2. Plugins are client-level. There are no per-call interceptors; vary behaviour with
    [`extend`](/guide/corgi#extend).
+
+:::

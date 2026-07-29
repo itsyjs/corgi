@@ -2,7 +2,7 @@
 
 `@itsy/corgi/chonk` includes all plugins and features out of the box, it's ~2.5kb instead of 1.4kb.
 
-<small>In chonk, plugin options are top-level attributes for convienence, so you can do the following.</small>
+<small>In chonk, plugin options are top-level attributes for convenience, so you can do the following.</small>
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi/chonk';

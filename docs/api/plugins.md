@@ -14,7 +14,7 @@ function withTimeout(ms: number): Plugin;
 ```
 
 Per-attempt deadline, tagged `ORDER.timeout`. Both modules export the same
-signature and behaviour. `ms` of `0`/`Infinity` disables it. Detect fires with
+signature and behaviour. `ms` of `0`/`Infinity` disables it. Detect with
 [`isTimeoutError`](/api/errors#istimeouterror).
 
 ## `withRetry`
@@ -49,7 +49,7 @@ Aborts the previous in-flight request when a new one starts. Tagged `ORDER.cance
 
 ## `schema`
 
-Not middleware — a `transform`. Grouped here as an opt-in add-on.
+Not middleware, but a `transform`. Grouped here as an opt-in add-on.
 
 ```ts
 // @itsy/corgi/schema

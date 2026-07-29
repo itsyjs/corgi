@@ -1,8 +1,8 @@
-# The Corgi
+# The Corgi interface
 
-`corgi` is the root export: a ready-to-use `Corgi` — a callable that's also an object
-of verb shortcuts and helpers — that additionally exposes [`create`](#create) for
-building configured instances. Its type is `CorgiAPI` (a `Corgi` plus `create`).
+`corgi` is the root export: a ready-to-use `Corgi`, meaning a callable that's also an
+object of verb shortcuts and helpers. It additionally exposes [`create`](#create) for
+building configured instances. Its type is `CorgiAPI`, a `Corgi` plus `create`.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -54,7 +54,7 @@ Shorthands that set the method and otherwise behave like the callable.
 raw(url: string, options?: RequestOptions): Promise<Response>;
 ```
 
-Returns the untouched `Response`. **No parsing, no throwing** — the escape hatch
+Returns the untouched `Response`, with no parsing and no throwing. The escape hatch
 for streaming, manual status handling, or reading headers.
 
 ### `extend`
@@ -63,11 +63,10 @@ for streaming, manual status handling, or reading headers.
 extend(defaults?: CorgiOptions): Corgi;
 ```
 
-Derives a new client whose defaults extend this one's. Headers and plugins
-**combine** (they don't replace). This is the supported way to make a one-off
-pipeline variation.
+Derives a new client whose defaults extend this one's. Headers and plugins combine
+rather than replace. This is the supported way to make a one-off pipeline variation.
 
-## The root export — `create`
+## The root export
 
 `corgi` itself is a `CorgiAPI`: a `Corgi` plus a `create` method for building configured
 instances. (Both `create` and [`extend`](#extend) return a plain `Corgi`.)

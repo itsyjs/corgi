@@ -1,9 +1,8 @@
 # Search-as-you-type
 
-The classic typeahead problem: the user types fast, you fire a request per
-keystroke, and responses come back **out of order** — so a stale result can
-overwrite a newer one. [`abortPrevious`](/plugins/abort-previous) fixes it by
-cancelling the previous in-flight request whenever a new one starts.
+Fire a request per keystroke and responses come back out of order, so a stale
+result can overwrite a newer one. [`abortPrevious`](/plugins/abort-previous)
+cancels the previous in-flight request whenever a new one starts.
 
 ## The client
 
@@ -37,15 +36,15 @@ Every call to `runSearch` supersedes the last: the older request is aborted (its
 promise rejects with `AbortError`), and only the most recent one can resolve. No
 manual `AbortController` bookkeeping.
 
-## Two things that matter
+## Keep the client stable
 
-**Keep the client stable.** `abortPrevious` is stateful — it remembers the current
-request in the pipeline built by `corgi`. Create the client **once** (module
-scope in the browser, or per-user-session), not per keystroke, or there's no shared
-state to cancel against.
+`abortPrevious` is stateful, remembering the current request in the pipeline built
+by `corgi`. Create the client once (module scope in the browser, or per user
+session), not per keystroke, or there's no shared state to cancel against.
 
-**On a server, build it per request.** A shared module-scope client would let
-unrelated users cancel each other. In a request handler:
+::: warning On a server, build it per request
+A shared module-scope client would let unrelated users cancel each other. In a
+request handler:
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -56,3 +55,5 @@ function handler() {
   // ...use search for this request only...
 }
 ```
+
+:::

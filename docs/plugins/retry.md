@@ -1,9 +1,10 @@
 # retry
 
-`withRetry` retries **idempotent** requests with **replayable** bodies on transient
-statuses and network/timeout errors — using exponential backoff with full jitter,
-honouring `Retry-After`. It never retries a caller-cancelled request, and its
-backoff wait is itself abortable.
+`withRetry` re-runs idempotent requests with replayable bodies on transient statuses
+and network/timeout errors. Backoff is exponential with full jitter, and `Retry-After`
+is honoured.
+
+A caller-cancelled request is never retried, and the backoff wait is itself abortable.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -14,8 +15,8 @@ const api = corgi.create({ plugins: [withRetry(3)] });
 await api.get('/flaky');
 ```
 
-Works with any of the three [plugin usage modes](/plugins/) — a client (above),
-[`/chonk`'s `retry` option](/guide/chonk), or standalone around native `fetch`.
+Works with a client (above), [`/chonk`'s `retry` option](/guide/chonk), or standalone
+around native `fetch`. See the [Plugins overview](/plugins/).
 
 ## Options
 
@@ -36,24 +37,22 @@ withRetry({
 
 ## What it will and won't retry
 
-- **Methods** — only the idempotent set by default. `POST`/`PATCH` are excluded:
+- Methods: only the idempotent set by default. `POST`/`PATCH` are excluded, since
   replaying them can double-create or double-charge. Override with `methods`.
-- **Bodies** — only replayable ones (string, `URLSearchParams`, `Blob`,
-  `FormData`, `ArrayBuffer`, typed arrays). A `ReadableStream` body is consumed by
-  the first attempt, so such a request is never retried.
-- **Responses** — retried on `statuses` (408/429/500/502/503/504 by default).
-- **Errors** — a per-attempt `TimeoutError`, and genuine network `TypeError`s
-  (DNS/reset/offline). Never a caller `AbortError`; never a programmer-error
-  `TypeError` (e.g. "is not a function").
-- **`Retry-After`** — if the server sends it (seconds or an HTTP-date), it's used
-  instead of computed backoff, capped at `maxDelay`.
+- Bodies: only replayable ones (string, `URLSearchParams`, `Blob`, `FormData`,
+  `ArrayBuffer`, typed arrays). A `ReadableStream` body is consumed by the first
+  attempt, so such a request is never retried.
+- Responses: retried on `statuses` (408/429/500/502/503/504 by default).
+- Errors: a per-attempt `TimeoutError`, and genuine network `TypeError`s
+  (DNS/reset/offline). Never a caller `AbortError`, and never a programmer-error
+  `TypeError` such as "is not a function".
+- `Retry-After`: when the server sends it (seconds or an HTTP-date) it's used instead
+  of computed backoff, capped at `maxDelay`.
 
 ## Ordering with timeout
 
-`withRetry` is tagged `ORDER.retry` (300), which sits **outside** `withTimeout`
-(400). So each attempt gets a fresh per-attempt timeout, and a fired timeout is
-retried. For a total budget instead, use a request `signal` — see
-[timeout](/plugins/timeout#per-attempt-vs-total-budget).
+`withRetry` is tagged `ORDER.retry` (300), which sits outside `withTimeout` (400), so
+each attempt gets a fresh deadline and a fired timeout is retried.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -63,3 +62,5 @@ import { withTimeout } from '@itsy/corgi/timeout';
 // order in the array doesn't matter — corgi sorts by ORDER:
 const api = corgi.create({ plugins: [withTimeout(5000), withRetry(3)] });
 ```
+
+<small class="read-more">[Read more: per-attempt vs total budget →](/plugins/timeout#per-attempt-vs-total-budget)</small>

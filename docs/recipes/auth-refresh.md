@@ -5,7 +5,7 @@ it when it expires. Both are plugins.
 
 ## Attaching a token
 
-The simplest case — a static token — is just a header on the client:
+The simplest case, a static token, is just a header on the client:
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';

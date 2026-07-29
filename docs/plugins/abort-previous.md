@@ -1,8 +1,8 @@
 # abort-previous
 
-The classic **search-as-you-type** primitive: whenever a new request starts, the
-previous in-flight one (from the same client) is aborted. (Being stateful, it's
-client-level — see the [Plugins overview](/plugins/) for how plugins are applied.)
+Whenever a new request starts, the previous in-flight one from the same client is
+aborted. The search-as-you-type primitive. Being stateful it's client-level; see the
+[Plugins overview](/plugins/) for how plugins are applied.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -23,18 +23,18 @@ async function onType(q: string) {
 ## How it works
 
 - Tagged `ORDER.cancel` (the outermost slot), so a superseding call cancels the
-  **entire** prior chain — including any retries or timeout it had running.
-- Keyless by design: **one plugin instance == one logical stream** (e.g. one
-  search box). Create separate clients for separate streams.
+  entire prior chain, including any retries or timeout it had running.
+- Keyless by design: one plugin instance is one logical stream (e.g. one search
+  box). Create separate clients for separate streams.
 - A fresh `AbortController` is minted per call, so cancellation keeps working
-  indefinitely (unlike reusing a single controller, which stays "aborted" forever
-  after the first cancel).
+  indefinitely. Reusing a single controller would leave it "aborted" forever after
+  the first cancel.
 - The caller's own `signal` is merged in, so your own aborts still work.
 
-## It's stateful — keep it client-level
+## It's stateful, so keep it client-level
 
 `abortPrevious` stores the current request in a closure created when the client's
-pipeline is built. That's why it **must** live at the client level:
+pipeline is built. That's why it must live at the client level:
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -45,6 +45,6 @@ const search = corgi.create({ plugins: [abortPrevious(), withTimeout(5000)] });
 ```
 
 ::: warning On the server
-Because it holds state, build the client **per request** on a server — never share
-one at module scope, or unrelated requests would cancel each other.
+Because it holds state, build the client per request on a server. Never share one
+at module scope, or unrelated requests would cancel each other.
 :::

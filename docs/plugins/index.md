@@ -1,6 +1,6 @@
 # Plugins
 
-A **plugin** is basically middleware for `fetch`. Plugins can even be used with native fetch!
+A **plugin** is middleware for `fetch`. Plugins can even be used with native fetch!
 
 Each built-in plugin lives on its own import path, so it costs **zero bytes** unless you import it.
 
@@ -13,7 +13,8 @@ Each built-in plugin lives on its own import path, so it costs **zero bytes** un
 | [`schema`](/plugins/schema)                | `@itsy/corgi/schema`         | runtime-validate a response body                                      | N/A             | no        |
 
 ::: info the schema plugin
-`schema` isn't technically a plugin (it's a `transform`), but it is opt-in and does offer enhanced functionality so is listed here to provide an overview
+`schema` isn't technically a plugin (it's a `transform`), but it's opt-in and extends
+what a call can do, so it's listed here for the overview.
 
 You can read more information about schema [on its page](/plugins/schema)
 :::
@@ -58,9 +59,9 @@ const api = corgi.create({
 
 ## Use with native `fetch`
 
-Because a plugin is just `fetch`-shaped middleware, you can compose plugins into a
-**drop-in `fetch`** — no client, no parsing layer. Use `compose(...)()` (omit the
-base to get a bind-safe global `fetch`):
+Because a plugin is `fetch`-shaped middleware, you can compose plugins into a
+drop-in `fetch` with no client and no parsing layer. Use `compose(...)()`, omitting
+the base to get a bind-safe global `fetch`:
 
 ```ts twoslash
 import { compose } from '@itsy/corgi';
