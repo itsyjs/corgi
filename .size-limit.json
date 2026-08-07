@@ -4,7 +4,7 @@
     "path": "dist/index.js",
     "import": "{ corgi }",
     "gzip": true,
-    "limit": "1450 B"
+    "limit": "1455 B"
   },
   {
     "name": "compose+order+ORDER",
@@ -13,13 +13,13 @@
     "gzip": true,
     "limit": "183 B"
   },
-  { "name": "root (everything)", "path": "dist/index.js", "gzip": true, "limit": "1550 B" },
+  { "name": "root (everything)", "path": "dist/index.js", "gzip": true, "limit": "1565 B" },
   {
     "name": "chonk: corgi",
     "path": "dist/chonk.js",
     "import": "{ corgi }",
     "gzip": true,
-    "limit": "2545 B"
+    "limit": "2560 B"
   },
   { "name": "/retry", "path": "dist/retry.js", "import": "{ withRetry }", "gzip": true, "limit": "937 B" },
   {

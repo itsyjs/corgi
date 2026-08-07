@@ -92,6 +92,7 @@ const api = corgi.create({ plugins: [withRetry(3), withTimeout(5000)] });
 ## Derived clients
 
 `extend()` — headers and plugins combine with the parent, not replace.
+[Chonk](/guide/chonk#derived-clients) clients can set `retry`, `timeout`, and `abortPrevious` here too.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';

@@ -15,7 +15,7 @@ for exact types. This file is the task-oriented map.
 | `@itsy/corgi/timeout-modern` | `withTimeout` (builtin-based, smaller, Baseline-2024)                                                                                                                                                                                                                             |
 | `@itsy/corgi/abort-previous` | `abortPrevious`                                                                                                                                                                                                                                                                   |
 | `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                                                                                                                                                                                            |
-| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious` as options; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                                                |
+| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious` as options on `create` AND `extend`; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                       |
 
 ## Core usage
 
@@ -28,6 +28,7 @@ await api.post('/users', { body: { name: 'Ada' } }); // object -> JSON
 await api.get('/x', { query: { tag: ['a', 'b'] }, responseType: 'blob' });
 const raw = await api.raw('/x'); // raw Response, no parse/throw
 const scoped = api.extend({ headers: { 'x-tenant': 'acme' } }); // headers merge, plugins concat
+const anon = api.extend({ headers: { authorization: '' } }); // empty value REMOVES a header
 ```
 
 `RequestOptions` (per-call): `method` (LiteralUnion — verbs autocomplete, any string ok)
@@ -35,6 +36,9 @@ const scoped = api.extend({ headers: { 'x-tenant': 'acme' } }); // headers merge
 `(status) => boolean` predicate) `transform` + any `RequestInit` field (incl. `signal`).
 `CorgiOptions` (client-level, on `create`/`extend`): `baseURL` `headers` `throwOnError`
 `plugins` `fetch` + `credentials`/`mode`/`cache`/`redirect`/`referrer`/`referrerPolicy`.
+Under `/chonk` these are `CorgiChonkOptions` — the same, plus `retry`/`timeout`/`abortPrevious`,
+on `create` and `extend` alike. Those three REPLACE the parent's on `extend` (no stacking);
+`headers`/`plugins` still combine as usual.
 Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 
 ## Common mistakes (READ THIS)
@@ -51,7 +55,8 @@ Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 5. **204/205/304 and HEAD resolve to `undefined`** regardless of `<T>`. `head()` is typed `Promise<undefined>`.
 6. **Retry skips non-replayable bodies:** a `ReadableStream` body is never retried, even on GET.
 7. **`abortPrevious` is stateful** — one client instance per logical stream; on servers build the
-   client per request, never module-scope it.
+   client per request, never module-scope it. The slot is per client, so an `extend`ed child is a
+   SEPARATE stream — it won't supersede its parent's requests.
 8. **Two `withTimeout` exports** — pick `@itsy/corgi/timeout` unless you know your runtime is Baseline-2024.
 9. **`schema` is a `transform`, not a client/`chonk` option.**
 10. **`query` drops `null`/`undefined`** (not `key=`, not a bare flag); empty arrays are dropped.

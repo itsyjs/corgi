@@ -14,6 +14,11 @@
  *   mergeHeaders(autoContentType, client.headers, perCall.headers)
  *
  * (Auto content-type goes first so an explicit caller header always overrides it.)
+ *
+ * An empty VALUE removes the key rather than setting it, which is how a later
+ * source drops a header an earlier one set:
+ *
+ *   mergeHeaders({ authorization: 'Bearer t' }, { authorization: '' })  // -> {}
  */
 export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
   const result = new Headers();
@@ -21,7 +26,10 @@ export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Header
     if (!source) continue;
     // `new Headers(source)` normalizes objects/arrays/Headers alike; `.set`
     // (not `.append`) means a later source replaces rather than duplicates.
-    new Headers(source).forEach((value, key) => result.set(key, value));
+    // An EMPTY value removes the key instead — the only way for a derived client
+    // to drop a header its parent set. The trade: you can't send a header whose
+    // value is genuinely the empty string.
+    new Headers(source).forEach((value, key) => (value ? result.set(key, value) : result.delete(key)));
   }
   return result;
 }

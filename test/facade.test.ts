@@ -125,6 +125,37 @@ suite('corgi', () => {
     assert.equal(captured!.get('x-child'), 'c');
   });
 
+  test('extend drops an inherited header when given an empty value', async () => {
+    let captured: Headers | undefined;
+    const base = corgi.create({
+      headers: { authorization: 'Bearer t', 'x-keep': 'k' },
+      fetch: async (_url, init) => {
+        captured = new Headers(init!.headers);
+        return json({});
+      },
+    });
+
+    await base.extend({ headers: { authorization: '' } }).get('/x');
+    assert.equal(captured!.has('authorization'), false); // removed, not sent empty
+    assert.equal(captured!.get('x-keep'), 'k'); // siblings survive
+
+    await base.get('/x'); // and the parent is untouched
+    assert.equal(captured!.get('authorization'), 'Bearer t');
+  });
+
+  test('an empty per-call content-type strips the auto JSON one', async () => {
+    let captured: Headers | undefined;
+    const api = corgi.create({
+      fetch: async (_url, init) => {
+        captured = new Headers(init!.headers);
+        return json({});
+      },
+    });
+    // Lets the runtime set its own content-type (e.g. a multipart boundary).
+    await api.post('/x', { body: { a: 1 }, headers: { 'content-type': '' } });
+    assert.equal(captured!.has('content-type'), false);
+  });
+
   test('a ReadableStream body is passed through with duplex: half', async () => {
     let captured: RequestInit | undefined;
     const api = corgi.create({

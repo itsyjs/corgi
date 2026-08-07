@@ -25,7 +25,8 @@ await api('/users', { method: 'OPTIONS' });
 
 For additional defaults or plugins on top of a base instance, use `extend`.
 
-Headers and plugins **combine** rather than replace.
+Headers and plugins **combine** rather than replace. To drop an inherited header, pass it with an
+empty value.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';
@@ -38,6 +39,10 @@ const base = corgi.create({
 // Inherits baseURL + auth header, adds its own:
 const billing = base.extend({ headers: { 'x-scope': 'billing' } });
 await billing.get('/invoices');
+
+// An empty value drops an inherited header:
+const anon = base.extend({ headers: { authorization: '' } });
+await anon.get('/status'); // sent without authorization
 ```
 
 ## raw

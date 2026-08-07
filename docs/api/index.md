@@ -12,7 +12,7 @@ Every public export, by entry point.
 | [`@itsy/corgi/retry`](/api/plugins#withretry)              | `withRetry`, type `RetryOptions`                                                                           |
 | [`@itsy/corgi/abort-previous`](/api/plugins#abortprevious) | `abortPrevious`                                                                                            |
 | [`@itsy/corgi/schema`](/api/plugins#schema)                | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                     |
-| [`@itsy/corgi/chonk`](/guide/chonk)                        | enhanced `corgi`, `CorgiChonkOptions`, and re-exports of everything above                                  |
+| [`@itsy/corgi/chonk`](/guide/chonk)                        | enhanced `corgi`, `CorgiChonkOptions`, `CorgiChonk`, `CorgiChonkAPI`, and re-exports of everything above   |
 
 ## `@itsy/corgi`
 

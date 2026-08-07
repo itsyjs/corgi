@@ -69,7 +69,8 @@ rather than replace. This is the supported way to make a one-off pipeline variat
 ## The root export
 
 `corgi` itself is a `CorgiAPI`: a `Corgi` plus a `create` method for building configured
-instances. (Both `create` and [`extend`](#extend) return a plain `Corgi`.)
+instances. (Both `create` and [`extend`](#extend) return a plain `Corgi` — in
+[`/chonk`](#chonk) they return a `CorgiChonk` instead.)
 
 ```ts
 interface CorgiAPI extends Corgi {
@@ -95,3 +96,24 @@ const api = corgi.create({
   headers: { authorization: 'Bearer token' },
 });
 ```
+
+## The `/chonk` variants {#chonk}
+
+`@itsy/corgi/chonk` widens both factory methods to accept `CorgiChonkOptions` — the same
+options plus `retry`, `timeout`, and `abortPrevious`. `extend` is widened too, so a
+derived client can turn a plugin on, off, or reconfigure it.
+
+```ts
+interface CorgiChonk extends Corgi {
+  extend: (defaults?: CorgiChonkOptions) => CorgiChonk;
+}
+
+interface CorgiChonkAPI extends CorgiChonk {
+  create: (defaults?: CorgiChonkOptions) => CorgiChonk;
+}
+```
+
+A `CorgiChonk` is a `Corgi`, so it drops into anything typed against the core interface.
+The plugin options **replace** the parent's on `extend` rather than stacking.
+
+<small class="read-more">[Read more: Corgi chonk →](/guide/chonk)</small>

@@ -130,7 +130,8 @@ export interface CorgiOptions {
   baseURL?: string;
   /** Default headers for every request. Merged case-insensitively; a per-call
    * `headers` entry overrides the same key here, which overrides the auto JSON
-   * `content-type`. */
+   * `content-type`. An empty value REMOVES a header instead of setting it, so
+   * `extend({ headers: { authorization: '' } })` drops an inherited one. */
   headers?: HeadersInit;
   /** Client-wide throw policy. Boolean, or a `(status) => boolean` predicate to
    * throw selectively (e.g. `(s) => s >= 500` — throw server errors, hand back
@@ -288,8 +289,13 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
   return client;
 }
 
-/** Merge parent + child client defaults; headers and plugins COMBINE, not replace. */
-function mergeCorgiOptions(base: CorgiOptions, extra?: CorgiOptions): CorgiOptions {
+/**
+ * Merge parent + child client defaults; headers and plugins COMBINE, not replace.
+ *
+ * Internal (not re-exported from './index.ts'): `/chonk` reuses it to merge its own
+ * option bag, hence the generic — `T` carries the extra chonk keys through.
+ */
+export function mergeCorgiOptions<T extends CorgiOptions>(base: T, extra?: T): T {
   if (!extra) return base;
   return {
     ...base,

@@ -13,6 +13,10 @@
  *     abortPrevious: true,  // -> abortPrevious()
  *   })
  *
+ * `extend` takes them too, and they OVERRIDE the parent's rather than stacking:
+ *
+ *   const searchApi = api.extend({ abortPrevious: true })  // its own cancel slot
+ *
  * Note `schema` is NOT a client option — validation is per-call (each endpoint has
  * its own shape), so it stays a `transform` exactly like in core: `schema` is
  * re-exported here, used as `client.get(url, { transform: schema(User) })`.
@@ -24,7 +28,7 @@
  * point. It adds no bloat to the other entries.)
  */
 
-import { createCorgi as createCoreCorgi } from './corgi.ts';
+import { createCorgi as createCoreCorgi, mergeCorgiOptions } from './corgi.ts';
 import type { Corgi, CorgiAPI, CorgiOptions } from './corgi.ts';
 import { withRetry, type RetryOptions } from './retry.ts';
 import { abortPrevious } from './abort-previous.ts';
@@ -47,10 +51,22 @@ export interface CorgiChonkOptions extends CorgiOptions {
   abortPrevious?: boolean;
 }
 
+/** A chonk client: a {@link Corgi} whose `extend` also takes {@link CorgiChonkOptions}. */
+export interface CorgiChonk extends Corgi {
+  /** Derive a new client. Same rules as core — scalars override, `headers` merge,
+   * `plugins` concatenate — plus `retry` / `timeout` / `abortPrevious`, which
+   * OVERRIDE the parent's rather than stacking a second layer:
+   *
+   *   const api = corgi.create({ baseURL: 'https://foo.bar' })
+   *   const searchApi = api.extend({ abortPrevious: true })
+   */
+  extend: (defaults?: CorgiChonkOptions) => CorgiChonk;
+}
+
 /** The `/chonk` root export: like {@link CorgiAPI}, but `create` accepts {@link CorgiChonkOptions}. */
-export interface CorgiChonkAPI extends Corgi {
-  /** Create a fresh `Corgi`, with `retry` / `timeout` / `abortPrevious` as options. */
-  create: (defaults?: CorgiChonkOptions) => Corgi;
+export interface CorgiChonkAPI extends CorgiChonk {
+  /** Create a fresh `CorgiChonk`, with `retry` / `timeout` / `abortPrevious` as options. */
+  create: (defaults?: CorgiChonkOptions) => CorgiChonk;
 }
 
 /**
@@ -59,12 +75,23 @@ export interface CorgiChonkAPI extends Corgi {
  * `plugins`; the core client order-sorts everything, so the sequence here is
  * irrelevant. Everything else behaves exactly like `@itsy/corgi`'s `corgi.create`.
  */
-export function createCorgi({ retry, timeout, abortPrevious: cancel, ...options }: CorgiChonkOptions = {}): Corgi {
-  const plugins = [...(options.plugins ?? [])];
+export function createCorgi(options: CorgiChonkOptions = {}): CorgiChonk {
+  const { retry, timeout, abortPrevious: cancel, ...rest } = options;
+  const plugins = [...(rest.plugins ?? [])];
   if (cancel) plugins.push(abortPrevious());
   if (retry != null) plugins.push(withRetry(retry));
   if (timeout) plugins.push(withTimeout(timeout));
-  return createCoreCorgi({ ...options, plugins });
+
+  // Core's `extend` re-enters the CORE factory, so it would drop the options
+  // above. Override it to re-enter this one, merging the raw (untranslated)
+  // option bag: re-translating is what lets a child override `timeout`/`retry`
+  // instead of stacking a second layer, and switch `abortPrevious` back off.
+  // Nothing is lost by minting fresh plugins — a plugin's state lives in the
+  // closure `compose` builds per client, so a derived client never shared the
+  // parent's anyway (see abort-previous.ts).
+  return Object.assign(createCoreCorgi({ ...rest, plugins }), {
+    extend: (extra?: CorgiChonkOptions): CorgiChonk => createCorgi(mergeCorgiOptions(options, extra)),
+  }) as CorgiChonk;
 }
 
 /**

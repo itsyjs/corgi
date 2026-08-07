@@ -24,6 +24,8 @@ You can read more information about schema [on its page](/plugins/schema)
 Pass plugins to `create` - they'll be used on every call.
 
 If you pass plugins to `extend`, they **combine** with the parent's.
+In [chonk](/guide/chonk#derived-clients), where plugins are options, a value you pass replaces the
+parent's instead.
 
 ```ts twoslash
 import { corgi } from '@itsy/corgi';

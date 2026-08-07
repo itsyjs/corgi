@@ -180,10 +180,12 @@ const also = await parseWith(User, api.get('/users/1')); // .then() style, zero 
 
 ```ts
 import { corgi } from '@itsy/corgi/chonk';
-const api = corgi.create({ baseURL: '…', retry: 3, timeout: 5000, abortPrevious: true });
+const api = corgi.create({ baseURL: '…', retry: 3, timeout: 5000 });
+const searchApi = api.extend({ abortPrevious: true }); // `extend` takes them too
 ```
 
-Batteries-included: the plugins become first-class options. Larger bundle (~2.5 KB); for browser/edge
+Batteries-included: the plugins become first-class options, on both `create` and `extend`. On `extend`
+they replace the parent's rather than stacking a second layer. Larger bundle (~2.5 KB); for browser/edge
 import from `@itsy/corgi` and add only the plugin subpaths you need.
 
 ## Writing a plugin

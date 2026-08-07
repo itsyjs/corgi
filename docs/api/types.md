@@ -93,6 +93,7 @@ Corgi-level defaults, merged into every request.
 ```ts
 interface CorgiOptions {
   baseURL?: string;
+  /** Merged case-insensitively; an empty value removes the header. */
   headers?: HeadersInit;
   /** Boolean, or a `(status) => boolean` predicate for a client-wide throw policy. */
   throwOnError?: boolean | ((status: number) => boolean);
