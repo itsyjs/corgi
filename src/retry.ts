@@ -34,7 +34,10 @@ export interface RetryOptions {
   /**
    * Response statuses that trigger a retry. Default: 408/429/500/502/503/504. A
    * `Retry-After` header (seconds or an HTTP-date) on a retried response is
-   * honored in place of computed backoff, capped at `maxDelay`.
+   * honored in place of computed backoff, capped at `maxDelay`. FRACTIONAL
+   * seconds are honored too (`Retry-After: 0.001` waits 1ms) — that's CONTRACT,
+   * not an accident of parsing: it's the documented lever for exercising retry
+   * against a client whose config a test can't touch (see "@itsy/corgi/testing").
    */
   statuses?: readonly number[];
   /**
@@ -109,6 +112,9 @@ function fullJitter(base: number, attempt: number, cap: number): number {
  * Prefer the server's `Retry-After` over computed backoff (it knows best). The
  * header is either a number of seconds or an HTTP-date — both handled — and the
  * result is capped at `maxDelay` so a broken "wait 2 hours" can't hang the client.
+ * `Number()` (not `parseInt`) is deliberate: fractional seconds are kept, which
+ * `@itsy/corgi/testing` documents as the way to drive retry in ~1ms against a
+ * module-scope client. A parse-to-spec "cleanup" here would break those suites.
  */
 function nextDelay(res: Response | undefined, attempt: number, base: number, cap: number): number {
   const header = res?.headers.get('retry-after');

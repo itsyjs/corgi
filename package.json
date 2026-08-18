@@ -52,6 +52,10 @@
       "types": "./dist/schema.d.ts",
       "import": "./dist/schema.js"
     },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
     "./chonk": {
       "types": "./dist/chonk.d.ts",
       "import": "./dist/chonk.js"

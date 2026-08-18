@@ -99,7 +99,7 @@ interface CorgiOptions {
   throwOnError?: boolean | ((status: number) => boolean);
   /** Middleware plugins; built into the pipeline once and reused (order-sorted). */
   plugins?: readonly Plugin[];
-  /** Custom fetch implementation for this client. */
+  /** Custom fetch for this client — the BASE of the pipeline (plugins wrap it). */
   fetch?: typeof fetch;
   credentials?: RequestCredentials;
   mode?: RequestMode;
@@ -109,6 +109,14 @@ interface CorgiOptions {
   referrerPolicy?: ReferrerPolicy;
 }
 ```
+
+`fetch` is captured **once** at `create`/`extend` time and becomes the base the
+plugin pipeline wraps — a polyfill, an instrumented fetch, or a test transport
+(`mockFetch().fetch`). When it's omitted, the default base is **late-bound**: it
+dereferences `globalThis.fetch` on every call, so stubbing the global reaches
+clients that were created at module scope, long before the stub existed.
+
+<small class="read-more">[Read more: testing with a fake transport →](/guide/testing)</small>
 
 ## `ParseAs`
 

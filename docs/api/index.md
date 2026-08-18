@@ -13,6 +13,7 @@ Every public export, by entry point.
 | [`@itsy/corgi/abort-previous`](/api/plugins#abortprevious) | `abortPrevious`                                                                                            |
 | [`@itsy/corgi/schema`](/api/plugins#schema)                | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                     |
 | [`@itsy/corgi/chonk`](/guide/chonk)                        | enhanced `corgi`, `CorgiChonkOptions`, `CorgiChonk`, `CorgiChonkAPI`, and re-exports of everything above   |
+| [`@itsy/corgi/testing`](/api/testing)                      | `mockFetch`, `httpError`, `networkError`, `abortError`, `timeoutError` + types                             |
 
 ## `@itsy/corgi`
 
@@ -30,3 +31,8 @@ The root entry: the client, the composition engine, and errors.
 
 The middleware, each on its own import path:
 [Plugins reference →](/api/plugins)
+
+## Testing (opt-in)
+
+The fake transport and error factories, dev-only by nature:
+[Testing reference →](/api/testing)

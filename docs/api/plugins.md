@@ -34,7 +34,11 @@ interface RetryOptions {
 ```
 
 A bare number is shorthand for `{ retries: n }`. Tagged `ORDER.retry`. Only retries
-idempotent methods with replayable bodies. Full behaviour: [retry](/plugins/retry).
+idempotent methods with replayable bodies. A `Retry-After` header (seconds or an
+HTTP-date) overrides computed backoff, capped at `maxDelay` — **fractional seconds
+included** (`0.001` → 1ms). That's contract, not a parsing accident: it's the lever
+[tests use to exercise retry](/guide/testing#keeping-retry-tests-fast) against a client whose
+config they can't touch. Full behaviour: [retry](/plugins/retry).
 
 ## `abortPrevious`
 

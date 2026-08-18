@@ -110,6 +110,7 @@ export default defineConfig({
             { text: 'Responses & errors', link: '/guide/responses' },
             { text: 'TypeScript', link: '/guide/typescript' },
             { text: 'Corgi chonk', link: '/guide/chonk' },
+            { text: 'Testing', link: '/guide/testing' },
           ],
         },
         {
@@ -163,6 +164,7 @@ export default defineConfig({
             { text: 'Errors & guards', link: '/api/errors' },
             { text: 'Composition engine', link: '/api/composition' },
             { text: 'Plugins', link: '/api/plugins' },
+            { text: 'Testing', link: '/api/testing' },
           ],
         },
       ],

@@ -1,25 +1,30 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { corgi, isHttpError, isAbortError } from '../src/index.ts';
-import { json, slow } from './helpers.ts';
+import { mockFetch } from '../src/testing.ts';
+
+// This suite doubles as the dogfood consumer for `@itsy/corgi/testing`: every
+// test drives the REAL pipeline through `mockFetch` instead of a hand-rolled
+// captured/counter closure — url building is asserted off `lastCall`, not off
+// a `let captured` re-declared per test.
 
 suite('corgi', () => {
   test('get parses JSON into the returned value', async () => {
-    const api = corgi.create({ fetch: async () => json({ id: 1, name: 'Ada' }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/u', { json: { id: 1, name: 'Ada' } });
     const user = await api.get<{ id: number; name: string }>('/u');
     assert.deepEqual(user, { id: 1, name: 'Ada' });
   });
 
   test('builds baseURL + query, serializes JSON body, merges headers, sets method', async () => {
-    let captured: { url: string; init: RequestInit } | undefined;
+    const http = mockFetch();
     const api = corgi.create({
       baseURL: 'https://api.test/v1',
       headers: { 'x-a': '1' },
-      fetch: async (url, init) => {
-        captured = { url: String(url), init: init! };
-        return json({});
-      },
+      fetch: http.fetch,
     });
+    http.post('/v1/users', { json: {} });
 
     await api.post('/users', {
       query: { page: 2, tag: ['x', 'y'] },
@@ -27,17 +32,20 @@ suite('corgi', () => {
       headers: { 'x-b': '2' },
     });
 
-    assert.equal(captured!.url, 'https://api.test/v1/users?page=2&tag=x&tag=y');
-    const h = new Headers(captured!.init.headers);
-    assert.equal(h.get('content-type'), 'application/json');
-    assert.equal(h.get('x-a'), '1');
-    assert.equal(h.get('x-b'), '2');
-    assert.equal(captured!.init.body, JSON.stringify({ name: 'Ada' }));
-    assert.equal(captured!.init.method, 'POST');
+    const call = http.lastCall!;
+    assert.equal(call.url, 'https://api.test/v1/users?page=2&tag=x&tag=y');
+    assert.equal(call.headers.get('content-type'), 'application/json');
+    assert.equal(call.headers.get('x-a'), '1');
+    assert.equal(call.headers.get('x-b'), '2');
+    assert.equal(call.body, JSON.stringify({ name: 'Ada' }));
+    assert.deepEqual(call.json(), { name: 'Ada' });
+    assert.equal(call.method, 'POST');
   });
 
   test('throws HttpError on non-2xx with a usable response and parsed data', async () => {
-    const api = corgi.create({ fetch: async () => json({ error: 'boom' }, { status: 500 }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { json: { error: 'boom' }, status: 500 });
 
     // Capture the rejection ourselves (assert.rejects wants a *sync* validator).
     let err: unknown;
@@ -56,24 +64,27 @@ suite('corgi', () => {
   });
 
   test('raw returns the Response without parsing or throwing', async () => {
-    const api = corgi.create({ fetch: async () => new Response('nope', { status: 404 }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { status: 404, body: 'nope' });
     const res = await api.raw('/x');
     assert.equal(res.status, 404);
     assert.equal(await res.text(), 'nope');
   });
 
   test('throwOnError:false returns the parsed body even on non-2xx', async () => {
-    const api = corgi.create({ fetch: async () => json({ error: 'boom' }, { status: 500 }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { json: { error: 'boom' }, status: 500 });
     const data = await api.get('/x', { throwOnError: false });
     assert.deepEqual(data, { error: 'boom' });
   });
 
   test('throwOnError predicate throws selectively by status', async () => {
     // One client, one policy: throw 5xx, hand back 4xx bodies.
-    const api = corgi.create({
-      fetch: async (url) => json({ where: String(url) }, { status: String(url).endsWith('/boom') ? 500 : 404 }),
-      throwOnError: (status) => status >= 500,
-    });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch, throwOnError: (status) => status >= 500 });
+    http.any((call) => ({ json: { where: call.url }, status: call.url.endsWith('/boom') ? 500 : 404 }));
 
     // 404 is below the threshold -> resolves with the parsed body (not thrown).
     assert.deepEqual(await api.get('/missing'), { where: '/missing' });
@@ -91,19 +102,25 @@ suite('corgi', () => {
   });
 
   test('responseType narrows parsing (text)', async () => {
-    const api = corgi.create({ fetch: async () => json({ a: 1 }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { json: { a: 1 } });
     const text = await api.get('/x', { responseType: 'text' });
     assert.equal(text, '{"a":1}');
   });
 
   test('transform maps the parsed value and drives the return type', async () => {
-    const api = corgi.create({ fetch: async () => json({ id: 5 }) });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { json: { id: 5 } });
     const id = await api.get('/x', { transform: (v) => (v as { id: number }).id });
     assert.equal(id, 5);
   });
 
   test('a caller-supplied signal passes through and aborts the request', async () => {
-    const api = corgi.create({ fetch: slow });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { hang: true });
     const controller = new AbortController();
     const pending = api.get('/x', { signal: controller.signal });
     controller.abort();
@@ -111,77 +128,64 @@ suite('corgi', () => {
   });
 
   test('extend combines headers and keeps defaults', async () => {
-    let captured: Headers | undefined;
-    const base = corgi.create({
-      headers: { 'x-base': 'b' },
-      fetch: async (_url, init) => {
-        captured = new Headers(init!.headers);
-        return json({});
-      },
-    });
+    const http = mockFetch();
+    const base = corgi.create({ headers: { 'x-base': 'b' }, fetch: http.fetch });
+    http.get('/x', { json: {} });
+
     const child = base.extend({ headers: { 'x-child': 'c' } });
     await child.get('/x');
-    assert.equal(captured!.get('x-base'), 'b');
-    assert.equal(captured!.get('x-child'), 'c');
+    assert.equal(http.lastCall!.headers.get('x-base'), 'b');
+    assert.equal(http.lastCall!.headers.get('x-child'), 'c');
   });
 
   test('extend drops an inherited header when given an empty value', async () => {
-    let captured: Headers | undefined;
-    const base = corgi.create({
-      headers: { authorization: 'Bearer t', 'x-keep': 'k' },
-      fetch: async (_url, init) => {
-        captured = new Headers(init!.headers);
-        return json({});
-      },
-    });
+    const http = mockFetch();
+    const base = corgi.create({ headers: { authorization: 'Bearer t', 'x-keep': 'k' }, fetch: http.fetch });
+    http.get('/x', { json: {} });
 
     await base.extend({ headers: { authorization: '' } }).get('/x');
-    assert.equal(captured!.has('authorization'), false); // removed, not sent empty
-    assert.equal(captured!.get('x-keep'), 'k'); // siblings survive
+    assert.equal(http.lastCall!.headers.has('authorization'), false); // removed, not sent empty
+    assert.equal(http.lastCall!.headers.get('x-keep'), 'k'); // siblings survive
 
     await base.get('/x'); // and the parent is untouched
-    assert.equal(captured!.get('authorization'), 'Bearer t');
+    assert.equal(http.lastCall!.headers.get('authorization'), 'Bearer t');
   });
 
   test('an empty per-call content-type strips the auto JSON one', async () => {
-    let captured: Headers | undefined;
-    const api = corgi.create({
-      fetch: async (_url, init) => {
-        captured = new Headers(init!.headers);
-        return json({});
-      },
-    });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.post('/x', { json: {} });
     // Lets the runtime set its own content-type (e.g. a multipart boundary).
     await api.post('/x', { body: { a: 1 }, headers: { 'content-type': '' } });
-    assert.equal(captured!.has('content-type'), false);
+    assert.equal(http.lastCall!.headers.has('content-type'), false);
   });
 
   test('a ReadableStream body is passed through with duplex: half', async () => {
-    let captured: RequestInit | undefined;
-    const api = corgi.create({
-      fetch: async (_url, init) => {
-        captured = init!;
-        return json({});
-      },
-    });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.post('/x', { json: {} });
     const body = new ReadableStream();
     await api.post('/x', { body });
-    assert.equal(captured!.body, body); // not JSON-stringified
-    assert.equal((captured as RequestInit & { duplex?: string }).duplex, 'half');
+    const call = http.lastCall!;
+    assert.equal(call.init.body, body); // not JSON-stringified — and not consumed by the mock
+    assert.equal(call.body, null); // the string arm stays null for a stream
+    assert.equal((call.init as RequestInit & { duplex?: string }).duplex, 'half');
   });
 
   test('HEAD and 204 responses resolve to undefined', async () => {
-    const head = corgi.create({ fetch: async () => json({ a: 1 }) });
-    assert.equal(await head.head('/x'), undefined);
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.head('/x', { json: { a: 1 } });
+    assert.equal(await api.head('/x'), undefined);
 
-    const noContent = corgi.create({ fetch: async () => new Response(null, { status: 204 }) });
-    assert.equal(await noContent.get('/x'), undefined);
+    http.get('/none', { status: 204 });
+    assert.equal(await api.get('/none'), undefined);
   });
 
   test('HttpError.data is the parsed text for a non-JSON error body', async () => {
-    const api = corgi.create({
-      fetch: async () => new Response('boom', { status: 500, headers: { 'content-type': 'text/plain' } }),
-    });
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { text: 'boom', status: 500 });
     let err: unknown;
     await api.get('/x').catch((e: unknown) => {
       err = e;
@@ -191,15 +195,10 @@ suite('corgi', () => {
   });
 
   test('an absolute URL ignores baseURL', async () => {
-    let captured: string | undefined;
-    const api = corgi.create({
-      baseURL: 'https://api.test/v1',
-      fetch: async (url) => {
-        captured = String(url);
-        return json({});
-      },
-    });
+    const http = mockFetch();
+    const api = corgi.create({ baseURL: 'https://api.test/v1', fetch: http.fetch });
+    http.get('https://other.com/x', { json: {} });
     await api.get('https://other.com/x');
-    assert.equal(captured, 'https://other.com/x');
+    assert.equal(http.lastCall!.url, 'https://other.com/x');
   });
 });

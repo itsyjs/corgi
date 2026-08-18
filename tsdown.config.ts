@@ -10,6 +10,9 @@ export default defineConfig({
     timeout: 'src/timeout.ts',
     'timeout-modern': 'src/timeout-modern.ts',
     schema: 'src/schema.ts',
+    // Test helpers (mockFetch + error factories). Dev-only, so it's exempt
+    // from size-limit — but still a real entry so types/publint cover it.
+    testing: 'src/testing.ts',
     // Batteries-included barrel. Pulls in every other entry on purpose (for
     // size-indifferent contexts), so it gets its own chunk. Published at `/chonk`.
     chonk: 'src/chonk.ts',
