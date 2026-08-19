@@ -33,6 +33,14 @@ export default defineConfig({
   // regardless; this drops the `-[hash]` from shared chunks (js + .d.ts). Chunks
   // aren't in the `exports` map, so their names are internal-only.
   hash: false,
+  // Prefix shared chunks (js + .d.ts) so they can NEVER claim an entry's
+  // filename. Without this, rolldown's dts chunk naming handed the shared
+  // corgi/url/parse chunk the name `index.d.ts` — demoting the real root
+  // entry to `index2.d.ts` and breaking every `types` condition in `exports`
+  // (the published surface suddenly had only minified re-export names).
+  outputOptions: {
+    chunkFileNames: 'chunk-[name].js',
+  },
   // Validate the published package.json `exports`/types wiring on every build.
   publint: true,
 });
