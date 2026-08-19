@@ -1,6 +1,6 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseResponse } from '../src/parse.ts';
+import { parseResponse } from '#parse';
 
 const jsonRes = (body: string) => new Response(body, { headers: { 'content-type': 'application/json' } });
 

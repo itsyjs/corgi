@@ -1,7 +1,7 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, isHttpError, isAbortError } from '../src/index.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi, isHttpError, isAbortError } from '#index';
+import { mockFetch } from '#testing';
 
 // This suite doubles as the dogfood consumer for `@itsy/corgi/testing`: every
 // test drives the REAL pipeline through `mockFetch` instead of a hand-rolled

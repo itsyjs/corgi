@@ -1,8 +1,8 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, compose, isTimeoutError, isAbortError } from '../src/index.ts';
-import { withTimeout } from '../src/timeout.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi, compose, isTimeoutError, isAbortError } from '#index';
+import { withTimeout } from '#timeout';
+import { mockFetch } from '#testing';
 
 suite('withTimeout', () => {
   test('client timeout rejects with a TimeoutError', async () => {

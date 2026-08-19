@@ -175,51 +175,41 @@ export function withRetry(options: RetryOptions | number = {}): Plugin {
   const methods = new Set((opts.methods ?? [...IDEMPOTENT]).map((m) => m.toUpperCase()));
   const statuses = new Set(opts.statuses ?? [...RETRY_STATUS]);
 
-  return order(
-    ORDER.retry,
-    (next: Fetcher): Fetcher =>
-      async (url, init = {}) => {
-        const method = (init.method ?? 'GET').toUpperCase();
-        const signal = init.signal ?? undefined;
-        // Eligibility is fixed for the whole loop: right method AND a replayable body.
-        const eligible = methods.has(method) && isReplayable(init.body);
+  return order(ORDER.retry, (next: Fetcher): Fetcher => async (url, init = {}) => {
+    const method = (init.method ?? 'GET').toUpperCase();
+    const signal = init.signal ?? undefined;
+    // Eligibility is fixed for the whole loop: right method AND a replayable body.
+    const eligible = methods.has(method) && isReplayable(init.body);
 
-        for (let attempt = 0; ; attempt++) {
-          // If the caller cancelled — or a total-deadline AbortSignal.timeout fired —
-          // between attempts, stop immediately; never start another try.
-          if (signal?.aborted) throw signal.reason;
+    for (let attempt = 0; ; attempt++) {
+      // If the caller cancelled — or a total-deadline AbortSignal.timeout fired —
+      // between attempts, stop immediately; never start another try.
+      if (signal?.aborted) throw signal.reason;
 
-          let response: Response;
-          try {
-            response = await next(url, init);
-          } catch (error) {
-            // Give up when out of retries, ineligible, cancelled, or not transient.
-            if (
-              attempt >= retries ||
-              !eligible ||
-              isCallerAbort(error) ||
-              signal?.aborted ||
-              !isRetryableError(error)
-            ) {
-              throw error;
-            }
-            const delay = fullJitter(base, attempt, cap);
-            opts.onRetry?.({ attempt: attempt + 1, error, delay });
-            await abortableSleep(delay, signal);
-            continue;
-          }
-
-          // Got a response: return it unless it's a retryable status with tries left.
-          if (attempt >= retries || !eligible || !statuses.has(response.status)) return response;
-
-          // We're discarding this response — cancel its body so the underlying
-          // connection is released back to the pool instead of leaking.
-          response.body?.cancel().catch(() => {});
-
-          const delay = nextDelay(response, attempt, base, cap);
-          opts.onRetry?.({ attempt: attempt + 1, response, delay });
-          await abortableSleep(delay, signal);
+      let response: Response;
+      try {
+        response = await next(url, init);
+      } catch (error) {
+        // Give up when out of retries, ineligible, cancelled, or not transient.
+        if (attempt >= retries || !eligible || isCallerAbort(error) || signal?.aborted || !isRetryableError(error)) {
+          throw error;
         }
-      },
-  );
+        const delay = fullJitter(base, attempt, cap);
+        opts.onRetry?.({ attempt: attempt + 1, error, delay });
+        await abortableSleep(delay, signal);
+        continue;
+      }
+
+      // Got a response: return it unless it's a retryable status with tries left.
+      if (attempt >= retries || !eligible || !statuses.has(response.status)) return response;
+
+      // We're discarding this response — cancel its body so the underlying
+      // connection is released back to the pool instead of leaking.
+      response.body?.cancel().catch(() => {});
+
+      const delay = nextDelay(response, attempt, base, cap);
+      opts.onRetry?.({ attempt: attempt + 1, response, delay });
+      await abortableSleep(delay, signal);
+    }
+  });
 }

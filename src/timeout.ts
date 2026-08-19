@@ -39,36 +39,32 @@ import { ORDER, order } from './core.ts';
  * on the request; when it fires the retry loop sees `signal.aborted` and stops.
  */
 export function withTimeout(ms: number): Plugin {
-  return order(
-    ORDER.timeout,
-    (next: Fetcher): Fetcher =>
-      (url, init = {}) => {
-        const caller = init.signal ?? undefined;
+  return order(ORDER.timeout, (next: Fetcher): Fetcher => (url, init = {}) => {
+    const caller = init.signal ?? undefined;
 
-        // If the caller's signal is ALREADY aborted, fail now. A one-shot 'abort'
-        // listener (added below) would never fire for an already-aborted signal, so
-        // without this check the request would proceed despite being cancelled.
-        if (caller?.aborted) return Promise.reject(caller.reason);
+    // If the caller's signal is ALREADY aborted, fail now. A one-shot 'abort'
+    // listener (added below) would never fire for an already-aborted signal, so
+    // without this check the request would proceed despite being cancelled.
+    if (caller?.aborted) return Promise.reject(caller.reason);
 
-        // ms of 0 / Infinity means "no timeout" — just forward untouched.
-        if (!ms || ms === Infinity) return next(url, init);
+    // ms of 0 / Infinity means "no timeout" — just forward untouched.
+    if (!ms || ms === Infinity) return next(url, init);
 
-        const controller = new AbortController();
-        const timer = setTimeout(
-          () => controller.abort(new DOMException(`Request timed out after ${ms}ms`, 'TimeoutError')),
-          ms,
-        );
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(new DOMException(`Request timed out after ${ms}ms`, 'TimeoutError')),
+      ms,
+    );
 
-        // Forward a caller abort to our controller, carrying the caller's own reason
-        // (e.g. an AbortError) so downstream code can tell a user-cancel apart from a
-        // timeout. Done manually rather than via AbortSignal.any (see file header).
-        const onAbort = () => controller.abort(caller!.reason);
-        caller?.addEventListener('abort', onAbort, { once: true });
+    // Forward a caller abort to our controller, carrying the caller's own reason
+    // (e.g. an AbortError) so downstream code can tell a user-cancel apart from a
+    // timeout. Done manually rather than via AbortSignal.any (see file header).
+    const onAbort = () => controller.abort(caller!.reason);
+    caller?.addEventListener('abort', onAbort, { once: true });
 
-        return next(url, { ...init, signal: controller.signal }).finally(() => {
-          clearTimeout(timer); // never leak the timer, even on success
-          caller?.removeEventListener('abort', onAbort); // never leak the listener
-        });
-      },
-  );
+    return next(url, { ...init, signal: controller.signal }).finally(() => {
+      clearTimeout(timer); // never leak the timer, even on success
+      caller?.removeEventListener('abort', onAbort); // never leak the listener
+    });
+  });
 }

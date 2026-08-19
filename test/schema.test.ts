@@ -1,8 +1,8 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi } from '../src/index.ts';
-import { schema, parseWith, isValidationError, type StandardSchemaV1 } from '../src/schema.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi } from '#index';
+import { schema, parseWith, isValidationError, type StandardSchemaV1 } from '#schema';
+import { mockFetch } from '#testing';
 
 // A minimal hand-rolled Standard Schema (what Zod/Valibot/ArkType produce). The
 // type param drives InferOutput, so `schema(User)` returns Promise<{ id: number }>.

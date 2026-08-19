@@ -821,7 +821,7 @@ export function mockFetch(): MockFetch {
         // Trackers never reject, so this can't throw and can't mark a dropped
         // request as handled.
         while (inFlight.size > 0) {
-          await Promise.all([...inFlight]);
+          await Promise.all(inFlight);
           quiet = 0; // new work ran — an earlier quiet turn proves nothing now
         }
         const before = log.length;

@@ -1,6 +1,6 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeHeaders } from '../src/headers.ts';
+import { mergeHeaders } from '#headers';
 
 suite('mergeHeaders', () => {
   test('collapses Content-Type vs content-type case-insensitively (later source wins)', () => {

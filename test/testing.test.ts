@@ -1,10 +1,10 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi } from '../src/index.ts';
-import { withRetry } from '../src/retry.ts';
-import { withTimeout } from '../src/timeout.ts';
-import { isAbortError, isHttpError, isTimeoutError } from '../src/error.ts';
-import { abortError, httpError, mockFetch, networkError, timeoutError } from '../src/testing.ts';
+import { corgi } from '#index';
+import { withRetry } from '#retry';
+import { withTimeout } from '#timeout';
+import { isAbortError, isHttpError, isTimeoutError } from '#error';
+import { abortError, httpError, mockFetch, networkError, timeoutError } from '#testing';
 
 // Tiny backoff so retry-driving tests stay fast.
 const fast = { retries: 3, backoff: 1, maxDelay: 2 } as const;
@@ -881,10 +881,16 @@ suite('mockFetch: settled', () => {
       quick = value;
     });
 
+    // The ceiling only matters when settled() deadlocks (= this test failing);
+    // clear the losing timer so a passing run doesn't idle 500ms before exit.
+    let deadlockTimer: ReturnType<typeof setTimeout> | undefined;
     const outcome = await Promise.race([
       http.settled().then(() => 'settled'),
-      new Promise((resolve) => setTimeout(() => resolve('deadlocked'), 500)),
+      new Promise((resolve) => {
+        deadlockTimer = setTimeout(() => resolve('deadlocked'), 500);
+      }),
     ]);
+    clearTimeout(deadlockTimer);
     assert.equal(outcome, 'settled');
     assert.equal(quick, 'ok'); // the real request still completed first
     http.reset();

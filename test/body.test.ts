@@ -1,6 +1,6 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { serializeBody } from '../src/body.ts';
+import { serializeBody } from '#body';
 
 suite('serializeBody', () => {
   test('null/undefined mean no body (not the string "null")', () => {

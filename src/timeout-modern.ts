@@ -38,27 +38,23 @@ import { ORDER, order } from './core.ts';
  * for a single TOTAL budget pass `signal: AbortSignal.timeout(totalMs)` instead.
  */
 export function withTimeout(ms: number): Plugin {
-  return order(
-    ORDER.timeout,
-    (next: Fetcher): Fetcher =>
-      (url, init = {}) => {
-        const caller = init.signal ?? undefined;
+  return order(ORDER.timeout, (next: Fetcher): Fetcher => (url, init = {}) => {
+    const caller = init.signal ?? undefined;
 
-        // If the caller's signal is ALREADY aborted, fail now with its reason —
-        // mirrors '@itsy/corgi/timeout' and avoids constructing timers/signals.
-        if (caller?.aborted) return Promise.reject(caller.reason);
+    // If the caller's signal is ALREADY aborted, fail now with its reason —
+    // mirrors '@itsy/corgi/timeout' and avoids constructing timers/signals.
+    if (caller?.aborted) return Promise.reject(caller.reason);
 
-        // ms of 0 / Infinity means "no timeout" — forward untouched.
-        if (!ms || ms === Infinity) return next(url, init);
+    // ms of 0 / Infinity means "no timeout" — forward untouched.
+    if (!ms || ms === Infinity) return next(url, init);
 
-        // `AbortSignal.timeout(ms)` aborts with a `TimeoutError` DOMException.
-        // `AbortSignal.any` adopts the reason of whichever input aborts FIRST (by
-        // identity), so a caller abort stays `AbortError` and a timeout stays
-        // `TimeoutError` downstream — keeping isAbortError / isTimeoutError and
-        // retry-on-timeout correct, exactly like the hand-rolled version.
-        const deadline = AbortSignal.timeout(ms);
-        const signal = caller ? AbortSignal.any([caller, deadline]) : deadline;
-        return next(url, { ...init, signal });
-      },
-  );
+    // `AbortSignal.timeout(ms)` aborts with a `TimeoutError` DOMException.
+    // `AbortSignal.any` adopts the reason of whichever input aborts FIRST (by
+    // identity), so a caller abort stays `AbortError` and a timeout stays
+    // `TimeoutError` downstream — keeping isAbortError / isTimeoutError and
+    // retry-on-timeout correct, exactly like the hand-rolled version.
+    const deadline = AbortSignal.timeout(ms);
+    const signal = caller ? AbortSignal.any([caller, deadline]) : deadline;
+    return next(url, { ...init, signal });
+  });
 }

@@ -1,6 +1,6 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compose, order, ORDER, corgi, type Fetcher, type Plugin } from '../src/index.ts';
+import { compose, order, ORDER, corgi, type Fetcher, type Plugin } from '#index';
 
 suite('compose', () => {
   test('compose applies plugins outermost-first', async () => {
@@ -32,16 +32,12 @@ suite('compose', () => {
   test('compose sorts tagged plugins by ORDER, regardless of array order', async () => {
     const calls: string[] = [];
     const tap = (name: string, slot: number): Plugin =>
-      order(
-        slot,
-        (next: Fetcher): Fetcher =>
-          async (url, init) => {
-            calls.push(`>${name}`);
-            const res = await next(url, init);
-            calls.push(`<${name}`);
-            return res;
-          },
-      );
+      order(slot, (next: Fetcher): Fetcher => async (url, init) => {
+        calls.push(`>${name}`);
+        const res = await next(url, init);
+        calls.push(`<${name}`);
+        return res;
+      });
 
     const base: Fetcher = async () => new Response('ok');
     // Listed inner-first, but compose must run `outer` (cancel, 100) outermost.
@@ -75,16 +71,12 @@ suite('compose', () => {
   test('corgi applies plugins in ORDER, regardless of array order', async () => {
     const calls: string[] = [];
     const tap = (name: string, slot: number): Plugin =>
-      order(
-        slot,
-        (next: Fetcher): Fetcher =>
-          async (url, init) => {
-            calls.push(`>${name}`);
-            const res = await next(url, init);
-            calls.push(`<${name}`);
-            return res;
-          },
-      );
+      order(slot, (next: Fetcher): Fetcher => async (url, init) => {
+        calls.push(`>${name}`);
+        const res = await next(url, init);
+        calls.push(`<${name}`);
+        return res;
+      });
 
     // Listed inner-first, but the client must run `outer` (cancel, 100) outermost.
     const api = corgi.create({

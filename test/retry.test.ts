@@ -1,8 +1,8 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, isHttpError } from '../src/index.ts';
-import { withRetry } from '../src/retry.ts';
-import { abortError, mockFetch, networkError } from '../src/testing.ts';
+import { corgi, isHttpError } from '#index';
+import { withRetry } from '#retry';
+import { abortError, mockFetch, networkError } from '#testing';
 
 // Tiny backoff so the suite stays fast. Call counts are asserted off the
 // mock's call log — every attempt (retries included) is one recorded call.

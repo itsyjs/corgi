@@ -1,8 +1,8 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, isAbortError } from '../src/index.ts';
-import { abortPrevious } from '../src/abort-previous.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi, isAbortError } from '#index';
+import { abortPrevious } from '#abort-previous';
+import { mockFetch } from '#testing';
 
 suite('abortPrevious', () => {
   test('a new call aborts the previous in-flight one', async () => {

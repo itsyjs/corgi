@@ -1,7 +1,7 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, isTimeoutError, isAbortError, type Plugin } from '../src/chonk.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi, isTimeoutError, isAbortError, type Plugin } from '#chonk';
+import { mockFetch } from '#testing';
 
 suite('chonk', () => {
   test('`timeout` is a first-class option (-> withTimeout)', async () => {

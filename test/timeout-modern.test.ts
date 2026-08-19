@@ -3,9 +3,9 @@
 // a Baseline-2024 runtime; the test runner is well past that).
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { corgi, compose, isTimeoutError, isAbortError } from '../src/index.ts';
-import { withTimeout } from '../src/timeout-modern.ts';
-import { mockFetch } from '../src/testing.ts';
+import { corgi, compose, isTimeoutError, isAbortError } from '#index';
+import { withTimeout } from '#timeout-modern';
+import { mockFetch } from '#testing';
 
 suite('withTimeout (modern)', () => {
   test('client timeout rejects with a TimeoutError', async () => {

@@ -1,6 +1,6 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { joinURL, withQuery, type Query } from '../src/url.ts';
+import { joinURL, withQuery, type Query } from '#url';
 
 // ---------------------------------------------------------------------------
 // joinURL — prefix join (NOT `new URL`), so the base path is never dropped.

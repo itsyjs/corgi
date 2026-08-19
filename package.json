@@ -27,6 +27,9 @@
   "type": "module",
   "sideEffects": false,
   "module": "./dist/index.js",
+  "imports": {
+    "#*": "./src/*.ts"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -85,18 +88,18 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "@shikijs/vitepress-twoslash": "^2.5.0",
-    "@size-limit/esbuild": "^12.1.0",
-    "@size-limit/file": "^12.1.0",
-    "@types/node": "^24.9.2",
+    "@shikijs/vitepress-twoslash": "4.4.2",
+    "@size-limit/esbuild": "^13.0.3",
+    "@size-limit/file": "^13.0.3",
+    "@types/node": "^26.2.0",
     "export-size": "^0.8.0",
-    "oxfmt": "^0.59.0",
-    "oxlint": "^1.74.0",
-    "oxlint-tsgolint": "^0.25.0",
-    "publint": "^0.3.2",
-    "size-limit": "^12.1.0",
-    "tsdown": "^0.15.6",
-    "typescript": "^5.9.3",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "publint": "^0.3.23",
+    "size-limit": "^13.0.3",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.0",
     "vitepress": "^1.6.4"
   },
   "engines": {
