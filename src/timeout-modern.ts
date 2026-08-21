@@ -39,11 +39,11 @@ import { ORDER, order } from './core.ts';
  */
 export function withTimeout(ms: number): Plugin {
   return order(ORDER.timeout, (next: Fetcher): Fetcher => (url, init = {}) => {
-    const caller = init.signal ?? undefined;
+    const callerSignal = init.signal ?? undefined;
 
     // If the caller's signal is ALREADY aborted, fail now with its reason —
     // mirrors '@itsy/corgi/timeout' and avoids constructing timers/signals.
-    if (caller?.aborted) return Promise.reject(caller.reason);
+    if (callerSignal?.aborted) return Promise.reject(callerSignal.reason);
 
     // ms of 0 / Infinity means "no timeout" — forward untouched.
     if (!ms || ms === Infinity) return next(url, init);
@@ -54,7 +54,7 @@ export function withTimeout(ms: number): Plugin {
     // `TimeoutError` downstream — keeping isAbortError / isTimeoutError and
     // retry-on-timeout correct, exactly like the hand-rolled version.
     const deadline = AbortSignal.timeout(ms);
-    const signal = caller ? AbortSignal.any([caller, deadline]) : deadline;
+    const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline;
     return next(url, { ...init, signal });
   });
 }

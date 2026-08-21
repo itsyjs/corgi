@@ -537,9 +537,9 @@ export function mockFetch(): MockFetch {
   const matches = (pattern: MockPattern, call: MockCall): boolean => {
     if (typeof pattern === 'string') {
       if (pattern.includes('://')) {
-        const want = new URL(pattern);
-        const got = new URL(call.url, SENTINEL);
-        return want.origin === got.origin && want.pathname === got.pathname;
+        const patternURL = new URL(pattern);
+        const callURL = new URL(call.url, SENTINEL);
+        return patternURL.origin === callURL.origin && patternURL.pathname === callURL.pathname;
       }
       return call.pathname === pattern;
     }
@@ -580,12 +580,14 @@ export function mockFetch(): MockFetch {
         /* probed outside its contract — no match */
       }
     }
-    const register = VERB_SUGAR.has(call.method) ? `http.${call.method.toLowerCase()}` : `http.on('${call.method}', …)`;
+    const registerCall = VERB_SUGAR.has(call.method)
+      ? `http.${call.method.toLowerCase()}`
+      : `http.on('${call.method}', …)`;
     const hint =
       nearMisses.size === 0
         ? ''
         : `\nNote: a ${[...nearMisses].join('/')} route matches this url. Either the request is sending the wrong ` +
-          `method, or the route should be registered for ${call.method} (${register}).`;
+          `method, or the route should be registered for ${call.method} (${registerCall}).`;
     const error = new Error(`mockFetch: no route matched ${call.method} ${call.url} — ${listing}${hint}`);
     error.name = 'MockRouteError';
     return error;
@@ -626,6 +628,8 @@ export function mockFetch(): MockFetch {
       // Corgi's default parsing SNIFFS the content-type; without this header a
       // JSON reply would come back as a plain string.
       if (!headers.has('content-type')) headers.set('content-type', 'application/json');
+      // `JSON.stringify` returns undefined (not a string) for undefined, a function, or a
+      // symbol — `?? 'null'` keeps `{ json: undefined }` a real body instead of a bodyless 200.
       return new Response(JSON.stringify(form.json) ?? 'null', { status, statusText, headers });
     }
     if ('text' in form) {
@@ -736,6 +740,8 @@ export function mockFetch(): MockFetch {
   };
 
   const transport: typeof fetch = async (input, init?) => {
+    // The `!` is sound: a Promise executor runs SYNCHRONOUSLY, so `settle` is always
+    // assigned by the time the constructor returns — TypeScript just can't see that.
     let settle!: () => void;
     const tracker = new Promise<void>((resolve) => {
       settle = resolve;
@@ -776,20 +782,20 @@ export function mockFetch(): MockFetch {
     fetch: transport,
     install(): () => void {
       if (uninstall) return uninstall; // already installed: one capture, one restore
-      const g = globalThis as { fetch?: typeof fetch };
-      const had = 'fetch' in g;
-      const previous = g.fetch;
-      g.fetch = transport;
-      let done = false;
+      const globals = globalThis as { fetch?: typeof fetch };
+      const hadFetch = 'fetch' in globals;
+      const previous = globals.fetch;
+      globals.fetch = transport;
+      let restored = false;
       uninstall = (): void => {
-        if (done) return; // restoring twice is a no-op
-        done = true;
+        if (restored) return; // restoring twice is a no-op
+        restored = true;
         uninstall = undefined; // a later install() starts a fresh capture
         // Reinstate exactly what install() saw — assignment when fetch existed
         // (even inherited: assignment shadows, restore re-shadows with the
         // captured value), deletion when it was genuinely absent.
-        if (had) g.fetch = previous;
-        else delete g.fetch;
+        if (hadFetch) globals.fetch = previous;
+        else delete globals.fetch;
       };
       return uninstall;
     },
@@ -809,8 +815,10 @@ export function mockFetch(): MockFetch {
     },
     callsTo(pattern: MockPattern, method?: string): readonly MockCall[] {
       if (typeof pattern === 'string') assertNotReserved(pattern);
-      const want = method?.toUpperCase();
-      return log.filter((call) => (want === undefined || call.method === want) && matches(pattern, call));
+      const wantedMethod = method?.toUpperCase();
+      return log.filter(
+        (call) => (wantedMethod === undefined || call.method === wantedMethod) && matches(pattern, call),
+      );
     },
     get unmatchedCalls(): readonly MockCall[] {
       return unmatchedLog;
@@ -819,13 +827,13 @@ export function mockFetch(): MockFetch {
       return routes.filter((route) => route.served === 0).map(describeRoute);
     },
     async settled(): Promise<void> {
-      let quiet = 0;
+      let quietTurns = 0;
       for (;;) {
         // Trackers never reject, so this can't throw and can't mark a dropped
         // request as handled.
         while (inFlight.size > 0) {
           await Promise.all(inFlight);
-          quiet = 0; // new work ran — an earlier quiet turn proves nothing now
+          quietTurns = 0; // new work ran — an earlier quiet turn proves nothing now
         }
         const before = log.length;
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -838,8 +846,8 @@ export function mockFetch(): MockFetch {
         // ahead of the SECOND probe. One extra turn is exactly enough to
         // observe a one-hop timer deferral and keep waiting.
         if (inFlight.size === 0 && log.length === before) {
-          if (++quiet >= 2) return;
-        } else quiet = 0;
+          if (++quietTurns >= 2) return;
+        } else quietTurns = 0;
       }
     },
     reset(): void {
@@ -888,6 +896,8 @@ export function httpError<T = unknown>(
   assertStatus(status, 'httpError');
   const statusText = init?.statusText ?? STATUS_TEXT[status] ?? '';
   const headers = new Headers(init?.headers);
+  // `data === undefined` is already excluded, but JSON.stringify ALSO returns undefined for a
+  // function or a symbol — `?? 'null'` keeps the body a string the Response constructor accepts.
   const body = NULL_BODY_STATUS.has(status) || data === undefined ? null : (JSON.stringify(data) ?? 'null');
   if (body !== null && !headers.has('content-type')) headers.set('content-type', 'application/json');
   const response = new Response(body, { status, statusText, headers });

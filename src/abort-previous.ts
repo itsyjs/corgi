@@ -60,13 +60,13 @@ export function abortPrevious(): Plugin {
       // Merge the caller's own signal in manually (not via AbortSignal.any, which
       // has Node bugs): forward its abort, carrying its reason, and handle the
       // already-aborted case up front since a `{ once: true }` listener wouldn't fire.
-      const caller = init.signal ?? undefined;
-      if (caller?.aborted) controller.abort(caller.reason);
-      const onAbort = () => controller.abort(caller!.reason);
-      caller?.addEventListener('abort', onAbort, { once: true });
+      const callerSignal = init.signal ?? undefined;
+      if (callerSignal?.aborted) controller.abort(callerSignal.reason);
+      const onAbort = () => controller.abort(callerSignal!.reason);
+      callerSignal?.addEventListener('abort', onAbort, { once: true });
 
       return next(url, { ...init, signal: controller.signal }).finally(() => {
-        caller?.removeEventListener('abort', onAbort);
+        callerSignal?.removeEventListener('abort', onAbort);
         // Clear the slot only if we're still the latest call, so we never wipe a
         // newer request's controller that has since taken the slot.
         if (current === controller) current = undefined;

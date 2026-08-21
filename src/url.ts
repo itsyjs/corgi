@@ -74,6 +74,6 @@ export function withQuery(url: string, query?: Query): string {
     }
   }
 
-  const qs = params.toString();
-  return (qs ? `${path}?${qs}` : path) + hash;
+  const queryString = params.toString();
+  return (queryString ? `${path}?${queryString}` : path) + hash;
 }

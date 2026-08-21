@@ -9,7 +9,7 @@
  *
  * Plugins stay pure `Response -> Response`; the client is the only place that
  * knows about parsing, typed values, and throwing. That clean seam is what lets
- * retry/timeout/etc. read `res.status` freely while the body is left untouched
+ * retry/timeout/etc. read `response.status` freely while the body is left untouched
  * for the client to parse.
  */
 
@@ -210,7 +210,7 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
   // `compose` order-sorts, so the sequence is correct however they're listed.
   const clientPipeline = compose(...(defaults.plugins ?? []))(base);
 
-  async function exec(url: string, options: RequestOptions): Promise<Response> {
+  async function fetchResponse(url: string, options: RequestOptions): Promise<Response> {
     const finalURL = withQuery(joinURL(options.baseURL ?? defaults.baseURL, url), options.query);
     const { body, contentType } = serializeBody(options.body);
     const headers = mergeHeaders(
@@ -248,41 +248,41 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
     return clientPipeline(finalURL, init);
   }
 
-  async function run(url: string, options: RequestOptions = {}): Promise<unknown> {
-    const res = await exec(url, options);
+  async function request(url: string, options: RequestOptions = {}): Promise<unknown> {
+    const response = await fetchResponse(url, options);
 
     // `throwOnError` may be a boolean or a `(status) => boolean` predicate; a
     // per-call value overrides the client default, which overrides the `true` default.
     const throwOnError = options.throwOnError ?? defaults.throwOnError ?? true;
-    const shouldThrow = typeof throwOnError === 'function' ? throwOnError(res.status) : throwOnError;
-    if (!res.ok && shouldThrow) {
+    const shouldThrow = typeof throwOnError === 'function' ? throwOnError(response.status) : throwOnError;
+    if (!response.ok && shouldThrow) {
       // Clone before reading so `err.response` remains fully readable afterwards.
-      const data = await parseResponse(res.clone(), options.method).catch(() => undefined);
-      throw new HttpError(res, data);
+      const data = await parseResponse(response.clone(), options.method).catch(() => undefined);
+      throw new HttpError(response, data);
     }
 
-    const value = await parseResponse(res, options.method, options.responseType);
+    const value = await parseResponse(response, options.method, options.responseType);
     // The post-parse hook. `schema(MySchema)` from '@itsy/corgi/schema' is just
     // one transform among many (camelize, date-revive, envelope-unwrap, ...).
-    return options.transform ? await options.transform(value, res) : value;
+    return options.transform ? await options.transform(value, response) : value;
   }
 
-  // `run` already backs every overload case, so attach the verb shortcuts +
+  // `request` already backs every overload case, so attach the verb shortcuts +
   // helpers directly onto it (functions are objects) and assert the typed `Corgi`
   // shape once. `Promise<unknown>` is contained here; callers see `Corgi`.
   const withMethod =
     (method: string) =>
     (url: string, options?: RequestOptions): Promise<unknown> =>
-      run(url, { ...options, method });
+      request(url, { ...options, method });
 
-  const client = Object.assign(run, {
+  const client = Object.assign(request, {
     get: withMethod('GET'),
     post: withMethod('POST'),
     put: withMethod('PUT'),
     patch: withMethod('PATCH'),
     delete: withMethod('DELETE'),
     head: withMethod('HEAD'),
-    raw: (url: string, options?: RequestOptions): Promise<Response> => exec(url, options ?? {}),
+    raw: (url: string, options?: RequestOptions): Promise<Response> => fetchResponse(url, options ?? {}),
     extend: (extra?: CorgiOptions): Corgi => createCorgi(mergeCorgiOptions(defaults, extra)),
   }) as unknown as Corgi;
 

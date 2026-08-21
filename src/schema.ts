@@ -98,11 +98,11 @@ export function isValidationError(error: unknown): error is ValidationError {
  * but unused here.
  */
 export function schema<S extends StandardSchemaV1>(
-  s: S,
+  spec: S,
 ): (value: unknown, response?: Response) => Promise<StandardSchemaV1.InferOutput<S>> {
   return async (value) => {
     // `validate` may be sync or async; `await` handles both uniformly.
-    const result = await s['~standard'].validate(value);
+    const result = await spec['~standard'].validate(value);
     if (result.issues) throw new ValidationError(result.issues);
     return result.value;
   };
@@ -115,8 +115,8 @@ export function schema<S extends StandardSchemaV1>(
  *   const user = await parseWith(User, api.get('/users/1'))
  */
 export function parseWith<S extends StandardSchemaV1>(
-  s: S,
+  spec: S,
   input: Promise<unknown>,
 ): Promise<StandardSchemaV1.InferOutput<S>> {
-  return input.then(schema(s));
+  return input.then(schema(spec));
 }

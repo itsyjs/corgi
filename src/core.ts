@@ -31,8 +31,8 @@ export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
  *   - Always resolve to a `Response`. Call `next(url, init)` to continue, or skip
  *     it to short-circuit (serve a cached/synthetic `Response` without hitting fetch).
  *   - Do NOT consume the body of a `Response` you return — the client parses it once,
- *     after the pipeline. Clone to inspect (`res.clone()`) and return the original.
- *     Release a `Response` you DISCARD with `res.body?.cancel()` so the connection
+ *     after the pipeline. Clone to inspect (`response.clone()`) and return the original.
+ *     Release a `Response` you DISCARD with `response.body?.cancel()` so the connection
  *     is freed.
  *   - Treat `init` as immutable: pass a fresh object — `next(url, { ...init, headers })`
  *     — never mutate the caller's. When you replace `signal`, forward the caller's
@@ -43,9 +43,9 @@ export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
  *
  *   // log every request/response. Untagged -> runs once per logical call.
  *   const withLog: Plugin = (next) => async (url, init) => {
- *     const res = await next(url, init)
- *     console.log(res.status, init?.method ?? 'GET', url)
- *     return res
+ *     const response = await next(url, init)
+ *     console.log(response.status, init?.method ?? 'GET', url)
+ *     return response
  *   }
  */
 export type Plugin = ((next: Fetcher) => Fetcher) & { readonly order?: number };
@@ -82,10 +82,10 @@ export const ORDER = {
  * Here `ORDER.retry - 1` puts auth just OUTSIDE retry, so the token is applied
  * once per logical call rather than re-applied on every retry attempt.
  */
-export function order<F extends (next: Fetcher) => Fetcher>(n: number, plugin: F): Plugin {
+export function order<F extends (next: Fetcher) => Fetcher>(hint: number, plugin: F): Plugin {
   // Plain assignment (not Object.assign) — same own-enumerable-prop result, fewer
   // bytes, and no `Object.assign` literal for gzip to carry. Casts are erased.
-  (plugin as unknown as { order: number }).order = n;
+  (plugin as unknown as { order: number }).order = hint;
   return plugin as unknown as Plugin;
 }
 

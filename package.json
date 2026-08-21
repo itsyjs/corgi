@@ -83,7 +83,6 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "node --test test/*.test.ts",
-    "test:build": "pnpm build && pnpm test",
     "size": "size-limit",
     "size:check": "export-size .",
     "check": "oxfmt --check && oxlint && tsc --noEmit && node --test test/*.test.ts",

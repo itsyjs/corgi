@@ -40,12 +40,12 @@ import { ORDER, order } from './core.ts';
  */
 export function withTimeout(ms: number): Plugin {
   return order(ORDER.timeout, (next: Fetcher): Fetcher => (url, init = {}) => {
-    const caller = init.signal ?? undefined;
+    const callerSignal = init.signal ?? undefined;
 
     // If the caller's signal is ALREADY aborted, fail now. A one-shot 'abort'
     // listener (added below) would never fire for an already-aborted signal, so
     // without this check the request would proceed despite being cancelled.
-    if (caller?.aborted) return Promise.reject(caller.reason);
+    if (callerSignal?.aborted) return Promise.reject(callerSignal.reason);
 
     // ms of 0 / Infinity means "no timeout" — just forward untouched.
     if (!ms || ms === Infinity) return next(url, init);
@@ -59,12 +59,12 @@ export function withTimeout(ms: number): Plugin {
     // Forward a caller abort to our controller, carrying the caller's own reason
     // (e.g. an AbortError) so downstream code can tell a user-cancel apart from a
     // timeout. Done manually rather than via AbortSignal.any (see file header).
-    const onAbort = () => controller.abort(caller!.reason);
-    caller?.addEventListener('abort', onAbort, { once: true });
+    const onAbort = () => controller.abort(callerSignal!.reason);
+    callerSignal?.addEventListener('abort', onAbort, { once: true });
 
     return next(url, { ...init, signal: controller.signal }).finally(() => {
       clearTimeout(timer); // never leak the timer, even on success
-      caller?.removeEventListener('abort', onAbort); // never leak the listener
+      callerSignal?.removeEventListener('abort', onAbort); // never leak the listener
     });
   });
 }
