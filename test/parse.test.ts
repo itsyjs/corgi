@@ -78,4 +78,9 @@ suite('parseResponse', () => {
     const res = { status: 200, headers: new Headers(), text: async () => 'plain' } as unknown as Response;
     assert.equal(await parseResponse(res), 'plain');
   });
+
+  test('an explicit json responseType parses without sniffing the content-type', async () => {
+    const res = new Response('{"a":1}', { headers: { 'content-type': 'text/plain' } });
+    assert.deepEqual(await parseResponse(res, undefined, 'json'), { a: 1 });
+  });
 });

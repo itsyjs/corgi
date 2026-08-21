@@ -63,7 +63,7 @@ const withAuth = order(ORDER.retry - 1, (next: Fetcher): Fetcher => async (url, 
 });
 ```
 
-Untagged plugins default to order `250` (between `dedupe` and `retry`). See
+Untagged plugins default to order `250` (between `swr` and `retry`). See
 [`ORDER`](/api/composition#order) for the slots.
 
 ## Using your plugin
@@ -100,7 +100,7 @@ don't share state.
 import { order, ORDER, type Fetcher } from '@itsy/corgi';
 // ---cut---
 // Share one request across identical concurrent GETs.
-const dedupe = order(ORDER.dedupe, (next: Fetcher): Fetcher => {
+const dedupe = order(ORDER.swr, (next: Fetcher): Fetcher => {
   const inflight = new Map<string, Promise<Response>>();
   return (url, init) => {
     if ((init?.method ?? 'GET') !== 'GET') return next(url, init);
@@ -112,6 +112,9 @@ const dedupe = order(ORDER.dedupe, (next: Fetcher): Fetcher => {
   };
 });
 ```
+
+A productionized generalization of this ships as [`@itsy/corgi/swr`](/plugins/swr) —
+the same in-flight sharing plus fresh/stale response caching.
 
 :::
 

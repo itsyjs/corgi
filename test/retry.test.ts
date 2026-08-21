@@ -119,4 +119,26 @@ suite('withRetry', () => {
     assert.deepEqual(await api.put('/x', { body: { a: 1 } }), { ok: true });
     assert.equal(http.calls.length, 2);
   });
+
+  test('retry still fires when the client will not throw (throwOnError: false)', async () => {
+    // The seam: retry decides on `response.status` INSIDE the pipeline, while the
+    // throw decision happens after it. Turning throwing off must not mute retry.
+    const http = mockFetch();
+    const api = corgi.create({ plugins: [withRetry(fast)], throwOnError: false, fetch: http.fetch });
+    http.get('/x', [{ status: 503 }, { json: { ok: true } }]);
+    assert.deepEqual(await api.get('/x'), { ok: true });
+    assert.equal(http.calls.length, 2);
+  });
+
+  test('a predicate that spares 5xx still lets retry run first', async () => {
+    const http = mockFetch();
+    const api = corgi.create({
+      plugins: [withRetry(fast)],
+      throwOnError: (status) => status < 500, // 5xx comes back as a value…
+      fetch: http.fetch,
+    });
+    http.get('/x', [{ status: 503 }, { status: 503 }, { status: 503 }, { status: 503 }]);
+    assert.deepEqual(await api.get('/x', { throwOnError: (s) => s < 500 }), undefined);
+    assert.equal(http.calls.length, 4); // …only after retry exhausted its attempts
+  });
 });

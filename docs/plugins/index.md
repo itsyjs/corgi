@@ -10,6 +10,7 @@ Each built-in plugin lives on its own import path, so it costs **zero bytes** un
 | [`withTimeout`](/plugins/timeout)          | `@itsy/corgi/timeout-modern` | per-attempt request timeouts, using modern JS (2024) for smaller size | `timeout` (400) | no        |
 | [`withRetry`](/plugins/retry)              | `@itsy/corgi/retry`          | retry request failures w/ backoff                                     | `retry` (300)   | no        |
 | [`abortPrevious`](/plugins/abort-previous) | `@itsy/corgi/abort-previous` | cancel the in-flight request when a new one starts (avoids racing)    | `cancel` (100)  | **yes**   |
+| [`swr`](/plugins/swr)                      | `@itsy/corgi/swr`            | stale-while-revalidate response cache + in-flight request dedupe      | `swr` (200)     | **yes**   |
 | [`schema`](/plugins/schema)                | `@itsy/corgi/schema`         | runtime-validate a response body                                      | N/A             | no        |
 
 ::: info The schema plugin
@@ -56,6 +57,7 @@ const api = corgi.create({
   retry: 3,
   timeout: 5000,
   abortPrevious: true,
+  swr: { fresh: 60_000 },
 });
 ```
 

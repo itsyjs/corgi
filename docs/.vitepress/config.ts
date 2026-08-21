@@ -135,6 +135,7 @@ export default defineConfig({
             { text: 'timeout', link: '/plugins/timeout' },
             { text: 'retry', link: '/plugins/retry' },
             { text: 'abort-previous', link: '/plugins/abort-previous' },
+            { text: 'swr (cache)', link: '/plugins/swr' },
             { text: 'schema (transform)', link: '/plugins/schema' },
           ],
         },

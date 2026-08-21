@@ -1,15 +1,17 @@
 {
   "name": "@itsy/corgi",
   "version": "1.3.1",
-  "description": "tiny composable typed fetch — one-off or client; cancel-previous, retry, timeout, and schema-validated transforms",
+  "description": "tiny composable typed fetch — one-off or client; cancel-previous, retry, timeout, swr caching, and schema-validated transforms",
   "keywords": [
     "abort",
+    "cache",
     "client",
     "composable",
     "fetch",
     "http",
     "isomorphic",
     "retry",
+    "swr",
     "timeout",
     "tiny",
     "typescript"
@@ -42,6 +44,10 @@
     "./abort-previous": {
       "types": "./dist/abort-previous.d.ts",
       "import": "./dist/abort-previous.js"
+    },
+    "./swr": {
+      "types": "./dist/swr.d.ts",
+      "import": "./dist/swr.js"
     },
     "./timeout": {
       "types": "./dist/timeout.d.ts",

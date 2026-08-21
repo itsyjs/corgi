@@ -11,6 +11,7 @@
  *     timeout: 5000,        // -> withTimeout(5000)   (hand-rolled, 2022-safe)
  *     retry: 3,             // -> withRetry(3)
  *     abortPrevious: true,  // -> abortPrevious()
+ *     swr: 60_000,          // -> swr(60_000)         (a minute of fresh cache)
  *   })
  *
  * `extend` takes them too, and they OVERRIDE the parent's rather than stacking:
@@ -33,6 +34,7 @@ import type { Corgi, CorgiAPI, CorgiOptions } from './corgi.ts';
 import { withRetry, type RetryOptions } from './retry.ts';
 import { abortPrevious } from './abort-previous.ts';
 import { withTimeout } from './timeout.ts';
+import { swr, type SwrOptions } from './swr.ts';
 
 /**
  * {@link CorgiOptions} plus first-class options for the built-in plugins. Note
@@ -49,12 +51,16 @@ export interface CorgiChonkOptions extends CorgiOptions {
   timeout?: number;
   /** Abort the previous in-flight request whenever a new one starts. */
   abortPrevious?: boolean;
+  /** Serve GETs stale-while-revalidate from an in-memory store: `{ fresh, stale }`
+   * windows in ms. A bare number is shorthand for `{ fresh: n }` (`0` = pure
+   * in-flight dedupe). Omit to add no cache at all. */
+  swr?: SwrOptions | number;
 }
 
 /** A chonk client: a {@link Corgi} whose `extend` also takes {@link CorgiChonkOptions}. */
 export interface CorgiChonk extends Corgi {
   /** Derive a new client. Same rules as core — scalars override, `headers` merge,
-   * `plugins` concatenate — plus `retry` / `timeout` / `abortPrevious`, which
+   * `plugins` concatenate — plus `retry` / `timeout` / `abortPrevious` / `swr`, which
    * OVERRIDE the parent's rather than stacking a second layer:
    *
    *   const api = corgi.create({ baseURL: 'https://foo.bar' })
@@ -65,20 +71,21 @@ export interface CorgiChonk extends Corgi {
 
 /** The `/chonk` root export: like {@link CorgiAPI}, but `create` accepts {@link CorgiChonkOptions}. */
 export interface CorgiChonkAPI extends CorgiChonk {
-  /** Create a fresh `CorgiChonk`, with `retry` / `timeout` / `abortPrevious` as options. */
+  /** Create a fresh `CorgiChonk`, with `retry` / `timeout` / `abortPrevious` / `swr` as options. */
   create: (defaults?: CorgiChonkOptions) => CorgiChonk;
 }
 
 /**
- * Like the core factory, but with `retry` / `timeout` / `abortPrevious` as
+ * Like the core factory, but with `retry` / `timeout` / `abortPrevious` / `swr` as
  * options. They're translated to plugins and merged with any you pass in
  * `plugins`; the core client order-sorts everything, so the sequence here is
  * irrelevant. Everything else behaves exactly like `@itsy/corgi`'s `corgi.create`.
  */
 export function createCorgi(options: CorgiChonkOptions = {}): CorgiChonk {
-  const { retry, timeout, abortPrevious: cancel, ...rest } = options;
+  const { retry, timeout, abortPrevious: cancel, swr: cache, ...rest } = options;
   const plugins = [...(rest.plugins ?? [])];
   if (cancel) plugins.push(abortPrevious());
+  if (cache != null) plugins.push(swr(cache));
   if (retry != null) plugins.push(withRetry(retry));
   if (timeout) plugins.push(withTimeout(timeout));
 
@@ -96,7 +103,7 @@ export function createCorgi(options: CorgiChonkOptions = {}): CorgiChonk {
 
 /**
  * The enhanced root export: a zero-config singleton plus `corgi.create(...)` whose
- * options include `retry` / `timeout` / `abortPrevious`. Mirrors `@itsy/corgi`'s
+ * options include `retry` / `timeout` / `abortPrevious` / `swr`. Mirrors `@itsy/corgi`'s
  * `corgi`, but batteries-included.
  */
 export const corgi: CorgiChonkAPI = Object.assign(createCorgi(), { create: createCorgi });
@@ -117,11 +124,11 @@ export type {
   QueryValue,
   HttpMethod,
 } from './index.ts';
-export type { Corgi, CorgiAPI, CorgiOptions, RetryOptions };
+export type { Corgi, CorgiAPI, CorgiOptions, RetryOptions, SwrOptions };
 
 // Plugins: the ones used above are re-exported from their local bindings; the
 // modern timeout is aliased so both timeout impls are reachable from `/chonk`.
-export { withRetry, abortPrevious, withTimeout };
+export { withRetry, abortPrevious, withTimeout, swr };
 export { withTimeout as withTimeoutModern } from './timeout-modern.ts';
 
 // Schema (Standard Schema transform + validation error).

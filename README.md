@@ -1,7 +1,7 @@
 # @itsy/corgi
 
 Tiny composable typed `fetch` — one-off or client; cancel-previous, retry,
-timeout, and schema-validated transforms as opt-in middleware. **~1.4 KB gzipped
+timeout, swr caching, and schema-validated transforms as opt-in middleware. **~1.4 KB gzipped
 core, zero dependencies, ESM, isomorphic.**
 
 > Full guides: **https://itsyjs.github.io/corgi/** — but the shipped `.d.ts` are
@@ -43,8 +43,9 @@ and gets out of the way — see [Why this size?](https://itsyjs.github.io/corgi/
 | `@itsy/corgi/timeout`        | `withTimeout` — hand-rolled, 2022-safe                                                                            |
 | `@itsy/corgi/timeout-modern` | `withTimeout` — builtin-based, ~60% smaller, Baseline-2024                                                        |
 | `@itsy/corgi/abort-previous` | `abortPrevious` (search-as-you-type)                                                                              |
+| `@itsy/corgi/swr`            | `swr` — stale-while-revalidate cache + in-flight request dedupe                                                   |
 | `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError` — Standard Schema                                   |
-| `@itsy/corgi/chonk`          | batteries-included: `corgi` with `retry`/`timeout`/`abortPrevious` as first-class options                         |
+| `@itsy/corgi/chonk`          | batteries-included: `corgi` with `retry`/`timeout`/`abortPrevious`/`swr` as first-class options                   |
 
 ```ts
 import { corgi } from '@itsy/corgi';
@@ -163,6 +164,24 @@ const search = corgi.create({ plugins: [abortPrevious()] });
 Stateful: keep it at the client level (one instance == one search box). **On a server, create the
 client per request** — a module-scoped one would cancel unrelated users' requests.
 
+### SWR cache — `@itsy/corgi/swr`
+
+```ts
+import { swr } from '@itsy/corgi/swr';
+const api = corgi.create({ plugins: [swr({ fresh: 60_000, stale: 300_000 })] });
+// <60s: served from memory, zero network · 60s–6min: stale served instantly + background refresh
+```
+
+Stale-while-revalidate for GETs, in memory, keyed by url. A promise settles once: the call that
+triggers a refresh gets the stale copy; the fresh data lands for the _next_ call (no subscriptions —
+that's a state library's job). Concurrent misses share one request, so `swr({ fresh: 0 })` is pure
+in-flight dedupe. The background refresh inherits `retry`/`timeout`, is single-flighted, and is
+detached from the caller's `signal`. Only responses `accept` lets in are stored
+(default `res.ok`); a failing upstream is re-attempted at most every `errorBackoff` ms and
+surfaces through `onError`; `stale: Infinity` never blocks once warm. Stateful, client-level, and
+keyed by url alone — **on a server, per-user responses need per-request (or per-user) clients**, or
+the cache serves user A's data to user B.
+
 ### Schema validation — `@itsy/corgi/schema`
 
 ```ts
@@ -180,12 +199,12 @@ const also = await parseWith(User, api.get('/users/1')); // .then() style, zero 
 
 ```ts
 import { corgi } from '@itsy/corgi/chonk';
-const api = corgi.create({ baseURL: '…', retry: 3, timeout: 5000 });
+const api = corgi.create({ baseURL: '…', retry: 3, timeout: 5000, swr: { fresh: 60_000 } });
 const searchApi = api.extend({ abortPrevious: true }); // `extend` takes them too
 ```
 
 Batteries-included: the plugins become first-class options, on both `create` and `extend`. On `extend`
-they replace the parent's rather than stacking a second layer. Larger bundle (~2.5 KB); for browser/edge
+they replace the parent's rather than stacking a second layer. Larger bundle (~2.8 KB); for browser/edge
 import from `@itsy/corgi` and add only the plugin subpaths you need.
 
 ## Writing a plugin
@@ -207,7 +226,7 @@ const withAuth = (token: string) =>
 
 Rules: always resolve to a `Response`; don't consume the body of a `Response` you return (clone to
 inspect, `res.body?.cancel()` on ones you discard); treat `init` as immutable and forward the caller's
-`signal`. `ORDER` slots: `cancel` 100 (outermost) · `dedupe` 200 · `retry` 300 · `timeout` 400
+`signal`. `ORDER` slots: `cancel` 100 (outermost) · `swr` 200 · `retry` 300 · `timeout` 400
 (innermost); untagged plugins sort at 250.
 
 ## Runtime support
@@ -223,10 +242,11 @@ for `AbortSignal.any` (see the timeout table) — use `@itsy/corgi/timeout` on o
 | `@itsy/corgi` — `{ corgi }`       | ~1.45 KB |
 | `@itsy/corgi/retry`               | ~0.94 KB |
 | `@itsy/corgi/abort-previous`      | ~0.30 KB |
+| `@itsy/corgi/swr`                 | ~0.46 KB |
 | `@itsy/corgi/timeout`             | ~0.33 KB |
 | `@itsy/corgi/timeout-modern`      | ~0.22 KB |
 | `@itsy/corgi/schema`              | ~0.19 KB |
-| `@itsy/corgi/chonk` — `{ corgi }` | ~2.5 KB  |
+| `@itsy/corgi/chonk` — `{ corgi }` | ~2.8 KB  |
 
 ## License
 

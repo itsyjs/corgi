@@ -201,4 +201,28 @@ suite('corgi', () => {
     await api.get('https://other.com/x');
     assert.equal(http.lastCall!.url, 'https://other.com/x');
   });
+
+  test('HttpError.data is undefined when the error body cannot be parsed', async () => {
+    const http = mockFetch();
+    http.get('/bad', { status: 500, body: '{oops', headers: { 'content-type': 'application/json' } });
+    const api = corgi.create({ fetch: http.fetch });
+
+    await assert.rejects(api.get('/bad'), (err: unknown) => {
+      assert.ok(isHttpError(err));
+      assert.equal(err.data, undefined); // best-effort parse gave up, the throw still happened
+      return true;
+    });
+  });
+
+  test('patch and delete send their verbs', async () => {
+    const http = mockFetch();
+    http.patch('/x', { json: { ok: true } });
+    http.delete('/x', { json: { gone: true } });
+    const api = corgi.create({ fetch: http.fetch });
+
+    assert.deepEqual(await api.patch('/x', { body: { a: 1 } }), { ok: true });
+    assert.equal(http.lastCall?.method, 'PATCH');
+    assert.deepEqual(await api.delete('/x'), { gone: true });
+    assert.equal(http.lastCall?.method, 'DELETE');
+  });
 });

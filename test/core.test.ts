@@ -94,4 +94,36 @@ suite('order', () => {
     const p = order(ORDER.retry, (next: Fetcher): Fetcher => next);
     assert.equal(p.order, ORDER.retry);
   });
+
+  test('plugins sharing an EXPLICIT order keep the order you listed them in', async () => {
+    const calls: string[] = [];
+    const tap = (name: string, slot: number): Plugin =>
+      order(slot, (next: Fetcher): Fetcher => async (url, init) => {
+        calls.push(name);
+        return next(url, init);
+      });
+
+    const base: Fetcher = async () => new Response('ok');
+    // Same slot for all three: the sort is stable, so insertion order survives.
+    await compose(tap('a', ORDER.retry), tap('b', ORDER.retry), tap('c', ORDER.retry))(base)('/x');
+
+    assert.deepEqual(calls, ['a', 'b', 'c']);
+  });
+
+  test('hand-nesting bypasses the sort entirely — a(b(c(base)))', async () => {
+    const calls: string[] = [];
+    const tap = (name: string, slot: number): Plugin =>
+      order(slot, (next: Fetcher): Fetcher => async (url, init) => {
+        calls.push(name);
+        return next(url, init);
+      });
+
+    // Deliberately inverted vs the hints: timeout (400) ends up OUTSIDE cancel (100).
+    const inner = tap('cancel', ORDER.cancel);
+    const outer = tap('timeout', ORDER.timeout);
+    const base: Fetcher = async () => new Response('ok');
+    await outer(inner(base))('/x');
+
+    assert.deepEqual(calls, ['timeout', 'cancel']);
+  });
 });

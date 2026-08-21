@@ -70,7 +70,7 @@ the sequence is correct no matter how you list them. The built-in slots:
 | slot      | value | meaning                                                      |
 | --------- | ----- | ------------------------------------------------------------ |
 | `cancel`  | 100   | outermost — a superseding call aborts the entire prior chain |
-| `dedupe`  | 200   | share one in-flight request across identical callers         |
+| `swr`     | 200   | share results across identical callers ([swr](/plugins/swr)) |
 | `retry`   | 300   | re-run the request; sits **outside** timeout                 |
 | `timeout` | 400   | innermost — per-attempt deadline, next to `fetch`            |
 

@@ -19,7 +19,7 @@
     "path": "dist/chonk.js",
     "import": "{ corgi }",
     "gzip": true,
-    "limit": "2560 B"
+    "limit": "2925 B"
   },
   { "name": "/retry", "path": "dist/retry.js", "import": "{ withRetry }", "gzip": true, "limit": "937 B" },
   {
@@ -29,6 +29,7 @@
     "gzip": true,
     "limit": "297 B"
   },
+  { "name": "/swr", "path": "dist/swr.js", "import": "{ swr }", "gzip": true, "limit": "575 B" },
   { "name": "/timeout", "path": "dist/timeout.js", "import": "{ withTimeout }", "gzip": true, "limit": "326 B" },
   {
     "name": "/timeout-modern",

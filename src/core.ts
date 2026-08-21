@@ -24,7 +24,7 @@ export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
  * A plugin: middleware for `Fetcher`s — `(next) => (url, init) => Promise<Response>`.
  * The optional `order` hint lets {@link compose} (and `corgi`, built on it) place
  * plugins in a sensible sequence no matter what order you list them in (see
- * {@link ORDER}). A plugin with NO hint sorts at 250 — between `dedupe` (200) and
+ * {@link ORDER}). A plugin with NO hint sorts at 250 — between `swr` (200) and
  * `retry` (300); plugins that share a hint keep the order you listed them in.
  *
  * Authoring rules — a plugin is a pure `Response -> Response` layer:
@@ -56,7 +56,8 @@ export type Plugin = ((next: Fetcher) => Fetcher) & { readonly order?: number };
  *
  *   cancel (100)  — outermost: a superseding call aborts the ENTIRE prior chain,
  *                   including any retries it had queued.
- *   dedupe (200)  — share one in-flight request across identical callers.
+ *   swr    (200)  — share results across identical callers: in-flight dedupe
+ *                   and response caching ("@itsy/corgi/swr" ships in this slot).
  *   retry  (300)  — re-run the request; sits OUTSIDE timeout so each attempt
  *                   gets its own fresh deadline.
  *   timeout (400) — innermost plugin, right next to `fetch`: combined with retry
@@ -67,7 +68,7 @@ export type Plugin = ((next: Fetcher) => Fetcher) & { readonly order?: number };
  */
 export const ORDER = {
   cancel: 100,
-  dedupe: 200,
+  swr: 200,
   retry: 300,
   timeout: 400,
 } as const;
@@ -103,7 +104,7 @@ export function resolveFetch(custom?: typeof fetch): Fetcher {
   return custom ?? ((url, init) => globalThis.fetch(url, init));
 }
 
-/** Untagged plugins land between `dedupe` and `retry` — a sane middle ground. */
+/** Untagged plugins land between `swr` and `retry` — a sane middle ground. */
 export const DEFAULT_ORDER = 250;
 
 /** Comparator that orders plugins by their `order` hint (untagged -> DEFAULT_ORDER). */

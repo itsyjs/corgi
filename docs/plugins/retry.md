@@ -10,8 +10,7 @@ A caller-cancelled request is never retried, and the backoff wait is itself abor
 import { corgi } from '@itsy/corgi';
 import { withRetry } from '@itsy/corgi/retry';
 
-// number shorthand === { retries: 3 }
-const api = corgi.create({ plugins: [withRetry(3)] });
+const api = corgi.create({ plugins: [withRetry({ retries: 3 })] });
 await api.get('/flaky');
 ```
 
@@ -24,8 +23,8 @@ around native `fetch`. See the [Plugins overview](/plugins/).
 import { withRetry } from '@itsy/corgi/retry';
 // ---cut---
 withRetry({
-  retries: 2, //     retries AFTER the first attempt (default 2 -> up to 3 tries)
-  backoff: 300, //   base ms; wait for attempt n is random in [0, base * 2**n)
+  retries: 2, // retries AFTER the first attempt (default 2 -> up to 3 tries)
+  backoff: 300, // base ms; wait for attempt n is random in [0, base * 2**n)
   maxDelay: 10_000, // ceiling per wait, and the cap applied to Retry-After
   methods: ['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'TRACE'], // idempotent set
   statuses: [408, 429, 500, 502, 503, 504], // transient statuses
@@ -33,6 +32,8 @@ withRetry({
     console.log(`retry #${attempt} in ${delay}ms`);
   },
 });
+
+withRetry(3); // number shorthand -> { retries: 3 }
 ```
 
 ## What it will and won't retry

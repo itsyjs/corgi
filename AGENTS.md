@@ -14,8 +14,9 @@ for exact types. This file is the task-oriented map.
 | `@itsy/corgi/timeout`        | `withTimeout` (hand-rolled, 2022-safe)                                                                                                                                                                                                                                                                                |
 | `@itsy/corgi/timeout-modern` | `withTimeout` (builtin-based, smaller, Baseline-2024)                                                                                                                                                                                                                                                                 |
 | `@itsy/corgi/abort-previous` | `abortPrevious`                                                                                                                                                                                                                                                                                                       |
+| `@itsy/corgi/swr`            | `swr`, type `SwrOptions` — stale-while-revalidate cache + in-flight request dedupe (GETs, keyed by url)                                                                                                                                                                                                               |
 | `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError`, type `StandardSchemaV1`                                                                                                                                                                                                                                |
-| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious` as options on `create` AND `extend`; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                                                           |
+| `@itsy/corgi/chonk`          | `corgi` with `retry`/`timeout`/`abortPrevious`/`swr` as options on `create` AND `extend`; re-exports everything above (incl. `withTimeoutModern`)                                                                                                                                                                     |
 | `@itsy/corgi/testing`        | `mockFetch` (fake transport: routes, queued replies incl. `{ delay }`, recorded calls, `settled()`, `install()` global stub + restore, `callsTo`/`unusedRoutes`/`unmatchedCalls` introspection), `httpError`, `networkError`, `abortError`, `timeoutError`; types `MockFetch`, `MockCall`, `MockPattern`, `MockReply` |
 
 ## Core usage
@@ -37,8 +38,8 @@ const anon = api.extend({ headers: { authorization: '' } }); // empty value REMO
 `(status) => boolean` predicate) `transform` + any `RequestInit` field (incl. `signal`).
 `CorgiOptions` (client-level, on `create`/`extend`): `baseURL` `headers` `throwOnError`
 `plugins` `fetch` + `credentials`/`mode`/`cache`/`redirect`/`referrer`/`referrerPolicy`.
-Under `/chonk` these are `CorgiChonkOptions` — the same, plus `retry`/`timeout`/`abortPrevious`,
-on `create` and `extend` alike. Those three REPLACE the parent's on `extend` (no stacking);
+Under `/chonk` these are `CorgiChonkOptions` — the same, plus `retry`/`timeout`/`abortPrevious`/`swr`,
+on `create` and `extend` alike. Those four REPLACE the parent's on `extend` (no stacking);
 `headers`/`plugins` still combine as usual.
 Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 
@@ -58,9 +59,12 @@ Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 7. **`abortPrevious` is stateful** — one client instance per logical stream; on servers build the
    client per request, never module-scope it. The slot is per client, so an `extend`ed child is a
    SEPARATE stream — it won't supersede its parent's requests.
-8. **Two `withTimeout` exports** — pick `@itsy/corgi/timeout` unless you know your runtime is Baseline-2024.
-9. **`schema` is a `transform`, not a client/`chonk` option.**
-10. **`query` drops `null`/`undefined`** (not `key=`, not a bare flag); empty arrays are dropped.
+8. **`swr` is stateful and keyed by url alone** — the cache's scope is the client. Per-user
+   responses on a server need per-request (or per-user) clients, or user A's data is served to
+   user B. A promise settles once: the stale-window caller gets the OLD copy by design.
+9. **Two `withTimeout` exports** — pick `@itsy/corgi/timeout` unless you know your runtime is Baseline-2024.
+10. **`schema` is a `transform`, not a client/`chonk` option.**
+11. **`query` drops `null`/`undefined`** (not `key=`, not a bare flag); empty arrays are dropped.
 
 ## Recipes
 
@@ -185,7 +189,7 @@ const res = await fetchX('https://api.example.com/data'); // raw Response (no pa
 - Always resolve to a `Response`; call `next(url, init)` or short-circuit with your own `Response`.
 - Don't consume the body of a `Response` you return (clone to inspect); `res.body?.cancel()` discards.
 - `init` is immutable: `next(url, { ...init, headers })`; forward the caller's `signal`.
-- `ORDER`: `cancel` 100 (outermost) · `dedupe` 200 · `retry` 300 · `timeout` 400 (innermost);
+- `ORDER`: `cancel` 100 (outermost) · `swr` 200 · `retry` 300 · `timeout` 400 (innermost);
   untagged = 250. Lower = further out (sees request first, response last). `compose` sorts by it.
 
 ## Error taxonomy (name-based guards)

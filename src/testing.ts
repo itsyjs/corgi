@@ -105,6 +105,9 @@ export type MockPattern = string | RegExp | ((call: MockCall) => boolean);
  *                                     return networkError()
  *
  * An ARRAY is a queue consumed in order, the LAST entry sticking once exhausted —
+ * one entry per DISPATCH: a request whose signal was already aborted is recorded
+ * in `calls` but never dispatched, so it consumes nothing (a real fetch wouldn't
+ * have dialed either). An abort mid-dispatch has already taken its entry.
  * `[{ status: 503 }, { json: ok }]` is how you exercise retry.
  *
  * An `HttpError` is deliberately REJECTED in reply position: corgi CONSTRUCTS

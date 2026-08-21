@@ -7,6 +7,7 @@ export default defineConfig({
     index: 'src/index.ts',
     retry: 'src/retry.ts',
     'abort-previous': 'src/abort-previous.ts',
+    swr: 'src/swr.ts',
     timeout: 'src/timeout.ts',
     'timeout-modern': 'src/timeout-modern.ts',
     schema: 'src/schema.ts',

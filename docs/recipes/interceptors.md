@@ -140,7 +140,7 @@ const api = corgi.create({ plugins: [withTimestamp, withInterceptors] });
 Over interceptors you get short-circuiting (skip `next` to serve a cache or mock, or
 return a `Response` to recover from an error), ordering (the `order` hint slots each
 plugin correctly, e.g. auth once per call, outside retry), and state (closures hold
-in-flight maps, as `abortPrevious` and dedupe do).
+in-flight maps, as `abortPrevious` and [swr](/plugins/swr) do).
 
 Two seams to keep in mind:
 

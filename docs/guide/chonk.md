@@ -12,6 +12,7 @@ const api = corgi.create({
   timeout: 5000, //        -> withTimeout(5000)
   retry: 3, //             -> withRetry(3)
   abortPrevious: true, //  -> abortPrevious()
+  swr: { fresh: 60_000 }, // -> swr({ fresh: 60_000 })
 });
 
 await api.get('/users');
@@ -34,13 +35,18 @@ Plugin options replace the parent's rather than combining — so
 `api.extend({ timeout: 1000 })` gives you one timeout, not two, and `abortPrevious: false`
 switches an inherited one off.
 
-::: info Each client only cancels its own requests
+::: info Each client's state is its own
 `abortPrevious` never reaches across clients: when `searchApi` cancels its previous request, it
 won't touch anything `api` has in flight. That's usually what you want — one client per search box
 — but it also means a client extended _from_ `searchApi` won't cancel `searchApi`'s requests.
+
+Same for `swr`: an extended client starts with its own empty cache — entries are never shared
+with, or inherited from, the parent.
 :::
 
 <small class="read-more">[Read more: abortPrevious →](/plugins/abort-previous)</small>
+
+<small class="read-more">[Read more: swr →](/plugins/swr)</small>
 
 ## Validation with `schema`
 

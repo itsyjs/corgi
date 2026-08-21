@@ -34,6 +34,21 @@ suite('chonk', () => {
     await firstRejects;
   });
 
+  test('`swr` is a first-class option (-> swr); extend overrides it', async () => {
+    const http = mockFetch();
+    http.get('/c', [{ json: { v: 1 } }, { json: { v: 2 } }, { json: { v: 3 } }]);
+    const api = corgi.create({ swr: 60_000, fetch: http.fetch }); // bare number = { fresh: n }
+
+    assert.deepEqual(await api.get('/c'), { v: 1 });
+    assert.deepEqual(await api.get('/c'), { v: 1 }); // cached
+    assert.equal(http.calls.length, 1);
+
+    const uncached = api.extend({ swr: 0 }); // override, not stack: fresh 0 = dedupe only
+    assert.deepEqual(await uncached.get('/c'), { v: 2 });
+    assert.deepEqual(await uncached.get('/c'), { v: 3 }); // nothing served from the store
+    assert.equal(http.calls.length, 3);
+  });
+
   test('options compose together and sort into the correct order', async () => {
     // retry + timeout together: a timed-out attempt is retried (timeout is inner).
     const http = mockFetch();

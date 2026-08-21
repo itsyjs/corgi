@@ -71,8 +71,8 @@ import { ORDER } from '@itsy/corgi';
 | slot      | value | role                                               |
 | --------- | ----- | -------------------------------------------------- |
 | `cancel`  | 100   | outermost — cancel-previous aborts the whole chain |
-| `dedupe`  | 200   | share one in-flight request                        |
+| `swr`     | 200   | share results — cache + in-flight dedupe           |
 | `retry`   | 300   | re-run; sits outside timeout                       |
 | `timeout` | 400   | innermost — per-attempt deadline                   |
 
-Untagged plugins default to `250` (between `dedupe` and `retry`).
+Untagged plugins default to `250` (between `swr` and `retry`).
