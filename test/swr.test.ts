@@ -123,7 +123,7 @@ suite('swr', () => {
     t.mock.timers.setTime(120_000);
     const controller = new AbortController();
     assert.deepEqual(await api.get('/x', { signal: controller.signal }), { v: 1 }); // stale, instant
-    controller.abort(); // caller cleans up after itself — must NOT kill the in-flight refresh
+    controller.abort(); // caller cleans up after itself — must not kill the in-flight refresh
     await http.settled();
 
     assert.deepEqual(await api.get('/x'), { v: 2 }); // the refresh survived the abort

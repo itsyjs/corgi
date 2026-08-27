@@ -1,14 +1,9 @@
 /**
- * parse.ts — turn a `Response` into a value.
- *
- * This is where several real fetch footguns get handled once, correctly:
- *   - 204/205/304 and HEAD have no body: reading it throws or hangs, so we
- *     short-circuit to `undefined`.
- *   - An empty body with a JSON content-type makes `response.json()` throw
- *     "Unexpected end of JSON input" — we read text first and only parse if
- *     non-empty.
- *   - A missing/unknown content-type is treated as text, NOT guessed as JSON,
- *     so a plain-text or HTML response never blows up.
+ * parse.ts — turn a `Response` into a value, handling the real fetch footguns
+ * once: no-body statuses (204/205/304 and HEAD short-circuit to `undefined`),
+ * empty bodies with a JSON content-type (text is read first, so no "Unexpected
+ * end of JSON input"), and missing/unknown content-types (treated as text,
+ * never guessed as JSON).
  */
 
 /**
@@ -41,14 +36,13 @@ const NULL_BODY_STATUS = new Set([204, 205, 304]);
  *
  * @param response      the response to read
  * @param method        the request method (HEAD responses carry no body)
- * @param responseType  optional explicit override; when omitted we sniff the
- *                      content-type and fall back to text for unknown types
+ * @param responseType  optional explicit override; when omitted the
+ *                      content-type is sniffed, falling back to text
  */
 export async function parseResponse(response: Response, method = 'GET', responseType?: ParseAs): Promise<unknown> {
   // No body to read for these — don't touch the stream.
   if (method.toUpperCase() === 'HEAD' || NULL_BODY_STATUS.has(response.status)) return undefined;
 
-  // Explicit override always wins over content-type sniffing.
   if (responseType) return readAs(response, responseType);
 
   const contentType = response.headers.get('content-type') ?? '';
@@ -60,8 +54,8 @@ export async function parseResponse(response: Response, method = 'GET', response
   }
 
   if (contentType.startsWith('text/') || contentType === '') {
-    // Known text, or unknown type: return text (empty -> undefined). Never guess
-    // JSON here — that's how "smart" parsers explode on HTML error pages.
+    // Known text, or unknown type (empty -> undefined). Never guess JSON here —
+    // that's how "smart" parsers explode on HTML error pages.
     const text = await response.text();
     return text || undefined;
   }

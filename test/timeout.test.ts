@@ -18,7 +18,7 @@ suite('withTimeout', () => {
 
   test('withTimeout forwards an already-aborted caller signal immediately', async () => {
     const controller = new AbortController();
-    controller.abort(); // aborted BEFORE the request starts
+    controller.abort(); // aborted before the request starts
     const http = mockFetch();
     http.get('/x', { hang: true });
     const pipeline = compose(withTimeout(1000))(http.fetch);

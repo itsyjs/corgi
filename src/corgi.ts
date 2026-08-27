@@ -1,16 +1,12 @@
 /**
  * corgi.ts — the ergonomic client.
  *
- * This is the "function + options" tier. `corgi.create()` returns a callable that
- * is ALSO an object of method shortcuts (`get`/`post`/...), builds the request
- * (base URL, query, body, headers), runs it through the composed plugin pipeline
- * from core.ts, then parses the response, throws on non-2xx, and applies an
- * optional `transform`.
- *
- * Plugins stay pure `Response -> Response`; the client is the only place that
- * knows about parsing, typed values, and throwing. That clean seam is what lets
- * retry/timeout/etc. read `response.status` freely while the body is left untouched
- * for the client to parse.
+ * `corgi.create()` returns a callable that is also an object of verb shortcuts:
+ * it builds the request (base URL, query, body, headers), runs it through the
+ * composed plugin pipeline from core.ts, then parses, throws on non-2xx, and
+ * applies an optional `transform`. Plugins stay pure `Response -> Response`;
+ * the client is the only place that knows about parsing, typed values, and
+ * throwing.
  */
 
 import { compose, resolveFetch, type Plugin } from './core.ts';
@@ -24,17 +20,16 @@ import { HttpError } from './error.ts';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 /**
- * A union that still autocompletes its literal members but accepts any other
- * `U` too. `(string & {})` is the well-known trick: it's assignable to/from
- * `string`, so it widens the union to all strings WITHOUT collapsing the literal
- * arm (which would kill editor autocomplete). Erased at build — costs no bytes.
+ * Autocompletes its literal members while accepting any other `U`. The
+ * `(U & {})` trick widens the union without collapsing the literal arm (which
+ * would kill autocomplete). Erased at build — costs no bytes.
  */
 type LiteralUnion<T extends U, U = string> = T | (U & {});
 
 /**
  * Maps a `responseType` to the value type it produces. `json` (the default)
- * falls through to the caller's `<T>` generic; the rest are fixed platform types.
- * The `[P] extends [...]` tuples stop TypeScript from distributing over unions.
+ * falls through to the caller's `<T>`; the rest are fixed platform types. The
+ * `[P] extends [...]` tuples stop TypeScript distributing over unions.
  */
 export type MappedResponse<P extends ParseAs, T> = [P] extends ['text']
   ? string
@@ -49,51 +44,49 @@ export type MappedResponse<P extends ParseAs, T> = [P] extends ['text']
           : T;
 
 /**
- * Per-call options. Extends the standard `RequestInit` (minus the fields we own).
+ * Per-call options. Extends the standard `RequestInit` minus the fields corgi
+ * owns.
  *
- * Per-call options are pure per-request DATA (url/query/body/headers/parse/
- * transform). Anything that shapes the middleware PIPELINE — `plugins`, a custom
- * `fetch`, timeout — is client-level only (`corgi.create`/`extend`), so the
- * pipeline (and any stateful plugin's memory, e.g. abortPrevious) is built once
- * and reused. Need a one-off variation? Derive a client with `.extend({...})`.
+ * Per-call options are pure per-request data. Anything that shapes the
+ * middleware pipeline — `plugins`, a custom `fetch` — is client-level only
+ * (`corgi.create`/`extend`), so the pipeline (and any stateful plugin's memory)
+ * is built once and reused; derive a one-off variation with `.extend({...})`.
  *
- * No per-call `timeout` field: for a per-call deadline pass the standard
- * `signal: AbortSignal.timeout(ms)` (a TOTAL budget for that call, spanning any
- * retries); for a per-attempt deadline add the `withTimeout` plugin
- * (`@itsy/corgi/timeout[-modern]`, client-level).
+ * No per-call `timeout` field: pass `signal: AbortSignal.timeout(ms)` for a
+ * total deadline spanning retries, or add the client-level `withTimeout` plugin
+ * for a per-attempt one.
  */
 export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'headers'> {
-  /** HTTP method. Typed as a {@link LiteralUnion} of the standard verbs, so the
-   * common ones autocomplete while any custom method string is still accepted.
-   * (The verb shortcuts — `get`/`post`/… — set this for you.) */
+  /** Typed as a {@link LiteralUnion} of the standard verbs: the common ones
+   * autocomplete, any custom method string is still accepted. The verb
+   * shortcuts set this for you. */
   method?: LiteralUnion<HttpMethod>;
   /**
-   * Per-call headers. Merged case-insensitively, so `Content-Type` and
-   * `content-type` collapse to one (never duplicated). Precedence low -> high:
-   * the auto `application/json` from a plain-object body < client `headers` <
-   * these — a per-call header always wins.
+   * Per-call headers, merged case-insensitively (`Content-Type` and
+   * `content-type` collapse to one). Precedence low -> high: the auto
+   * `application/json` from a plain-object body < client `headers` < these.
    */
   headers?: HeadersInit;
   /**
    * Request body. A plain object/array is JSON-encoded and sets
-   * `content-type: application/json` (unless you set one). Every real `BodyInit` —
-   * string, `FormData`, `Blob`/`File`, `URLSearchParams`, `ReadableStream`,
-   * `ArrayBuffer`/typed arrays — passes through untouched (the runtime sets the
-   * right header, e.g. the multipart boundary for `FormData`). `null`/`undefined`
-   * send no body. A `ReadableStream` body gets `duplex: 'half'` automatically
-   * (Node/undici require it) — and note a stream body is NOT retryable.
+   * `content-type: application/json` (unless you set one). Every real
+   * `BodyInit` — string, `FormData`, `Blob`/`File`, `URLSearchParams`,
+   * `ReadableStream`, `ArrayBuffer`/typed arrays — passes through untouched
+   * (the runtime sets e.g. the multipart boundary). `null`/`undefined` send no
+   * body. A `ReadableStream` body gets `duplex: 'half'` automatically
+   * (Node/undici require it) and is not retryable.
    *
-   * The object arm is deliberately wide (`object`, not `Record<string, unknown>`)
-   * so a plain `interface` DTO type-checks — `Record<string, unknown>` rejects
-   * interfaces for want of an index signature (TS#15300). Trade-off: a non-plain
-   * object (a `Map`/`Set`/class instance) also type-checks, but `JSON.stringify`
-   * yields whatever it yields (often `{}`) — pass a plain object or a real `BodyInit`.
+   * The object arm is `object`, not `Record<string, unknown>`, so a plain
+   * `interface` DTO type-checks (`Record` rejects interfaces for want of an
+   * index signature, TS#15300). Trade-off: a `Map`/`Set`/class instance also
+   * type-checks but stringifies as `{}` — pass a plain object or a real
+   * `BodyInit`.
    */
   body?: BodyInit | object | null;
   /**
    * Merged into the URL's query string (existing params and `#hash` are kept):
    *   - arrays expand to repeated keys — `{ tag: ['a','b'] }` -> `tag=a&tag=b`;
-   *   - `null`/`undefined` values (and nullish array items) are OMITTED — never
+   *   - `null`/`undefined` values (and nullish array items) are omitted — never
    *     sent as `key=` or a bare `key` (matches axios); an empty array omits the key;
    *   - a scalar replaces a same-named existing param; an array replaces then appends;
    *   - keys/values are `URLSearchParams`-encoded (space -> `+`, unicode -> UTF-8).
@@ -107,17 +100,15 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'method' | 'h
    * sniffing path never does). */
   responseType?: ParseAs;
   /**
-   * Throw {@link HttpError} on any non-2xx response. Default `true`. When `false`,
-   * a non-2xx resolves instead of throwing and you get the PARSED body — on an
-   * error that's the error payload, still typed as your `<T>`, so narrow it
-   * yourself. For the raw `Response` (no parse, no throw) use `.raw()`.
+   * Throw {@link HttpError} on any non-2xx response. Default `true`. When
+   * `false`, a non-2xx resolves with the parsed body — on an error that's the
+   * error payload, still typed as your `<T>`, so narrow it yourself. For the
+   * raw `Response` (no parse, no throw) use `.raw()`.
    *
-   * Pass a PREDICATE `(status) => boolean` for per-status control: return `true`
-   * to throw, `false` to resolve with the parsed body. Handy when an API returns
-   * a meaningful body on some 4xx you want to read while still throwing on 5xx —
-   * e.g. `throwOnError: (s) => s >= 500`. The non-thrown body is typed as your
-   * `<T>` (status isn't returned alongside it), so this shines when you WANT the
-   * error body; to branch on status and remap, a `try/catch` + `isHttpError` still reads cleaner.
+   * A predicate `(status) => boolean` gives per-status control (`true` =
+   * throw): `throwOnError: (s) => s >= 500` reads meaningful 4xx bodies while
+   * still throwing on 5xx. To branch on status and remap, `try/catch` +
+   * `isHttpError` reads cleaner.
    */
   throwOnError?: boolean | ((status: number) => boolean);
   /** Post-parse hook: map/validate the value. Its return type becomes the result.
@@ -130,12 +121,11 @@ export interface CorgiOptions {
   baseURL?: string;
   /** Default headers for every request. Merged case-insensitively; a per-call
    * `headers` entry overrides the same key here, which overrides the auto JSON
-   * `content-type`. An empty value REMOVES a header instead of setting it, so
+   * `content-type`. An empty value removes a header instead of setting it, so
    * `extend({ headers: { authorization: '' } })` drops an inherited one. */
   headers?: HeadersInit;
-  /** Client-wide throw policy. Boolean, or a `(status) => boolean` predicate to
-   * throw selectively (e.g. `(s) => s >= 500` — throw server errors, hand back
-   * 4xx bodies). A per-call `throwOnError` overrides this. See {@link RequestOptions.throwOnError}. */
+  /** Client-wide throw policy; a per-call `throwOnError` overrides it. See
+   * {@link RequestOptions.throwOnError}. */
   throwOnError?: boolean | ((status: number) => boolean);
   /** Middleware plugins for this client. Built into the pipeline once, reused
    * across calls (so stateful plugins like abortPrevious keep their memory).
@@ -153,9 +143,8 @@ export interface CorgiOptions {
 /**
  * The call signature set, shared by the client itself and each verb shortcut.
  * Overloads resolve the return type by priority: `transform` > `responseType` > `<T>`.
- *
- * Runtime note: a no-body response (status 204/205/304, or any HEAD request)
- * resolves to `undefined` regardless of `<T>` — guard the value before using it.
+ * A no-body response (204/205/304, or any HEAD request) resolves to `undefined`
+ * regardless of `<T>` — guard the value before using it.
  */
 export interface Call {
   /** With a `transform`, the result type is whatever the transform returns. */
@@ -190,10 +179,9 @@ export interface Corgi extends Call {
 }
 
 /**
- * The root `corgi` export: a ready-to-use zero-config {@link Corgi} (callable, with
- * verb shortcuts) that ALSO carries `create` — the factory for a fresh configured
- * instance. This is the whole public surface: `corgi('/x')` / `corgi.get('/x')` for
- * one-offs, `corgi.create({ ... })` when you want shared defaults or plugins.
+ * The root `corgi` export: a zero-config {@link Corgi} that also carries
+ * `create`. `corgi('/x')` / `corgi.get('/x')` for one-offs,
+ * `corgi.create({ ... })` for shared defaults or plugins.
  */
 export interface CorgiAPI extends Corgi {
   /** Create a fresh, independently-configured `Corgi` (base URL, headers, plugins…). */
@@ -203,11 +191,9 @@ export interface CorgiAPI extends Corgi {
 export function createCorgi(defaults: CorgiOptions = {}): Corgi {
   const base = resolveFetch(defaults.fetch);
 
-  // Build the client pipeline ONCE, and reuse it for every call. This is
-  // deliberate and load-bearing: a stateful plugin such as abortPrevious() keeps
-  // its "current request" in a closure created HERE (when the plugin is applied),
-  // so a single shared pipeline is what lets a new call cancel the previous one.
-  // `compose` order-sorts, so the sequence is correct however they're listed.
+  // Built once per client, on purpose: a stateful plugin (abortPrevious, swr)
+  // keeps its state in a closure created here, so every call must reuse this
+  // pipeline. `compose` order-sorts the plugins.
   const clientPipeline = compose(...(defaults.plugins ?? []))(base);
 
   async function fetchResponse(url: string, options: RequestOptions): Promise<Response> {
@@ -220,11 +206,9 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
       options.headers,
     );
 
-    // Assemble the RequestInit. Rather than enumerate every fetch field, we merge
-    // client defaults with per-call options (options win), strip the keys we own,
-    // and let EVERYTHING ELSE pass straight through — signal, credentials, mode,
-    // cache, redirect, keepalive, duplex, priority, and any future RequestInit
-    // fields, for free. `body`/`headers`/`method` are handled explicitly above/below.
+    // Merge client defaults with per-call options (options win), strip the keys
+    // corgi owns, and let everything else — signal, credentials, keepalive,
+    // any future RequestInit field — pass straight through.
     const {
       baseURL: _baseURL,
       query: _query,
@@ -251,8 +235,6 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
   async function request(url: string, options: RequestOptions = {}): Promise<unknown> {
     const response = await fetchResponse(url, options);
 
-    // `throwOnError` may be a boolean or a `(status) => boolean` predicate; a
-    // per-call value overrides the client default, which overrides the `true` default.
     const throwOnError = options.throwOnError ?? defaults.throwOnError ?? true;
     const shouldThrow = typeof throwOnError === 'function' ? throwOnError(response.status) : throwOnError;
     if (!response.ok && shouldThrow) {
@@ -262,14 +244,12 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
     }
 
     const value = await parseResponse(response, options.method, options.responseType);
-    // The post-parse hook. `schema(MySchema)` from '@itsy/corgi/schema' is just
-    // one transform among many (camelize, date-revive, envelope-unwrap, ...).
+    // Post-parse hook — `schema()` is one transform among many.
     return options.transform ? await options.transform(value, response) : value;
   }
 
-  // `request` already backs every overload case, so attach the verb shortcuts +
-  // helpers directly onto it (functions are objects) and assert the typed `Corgi`
-  // shape once. `Promise<unknown>` is contained here; callers see `Corgi`.
+  // `request` already backs every overload, so attach the shortcuts directly
+  // onto it (functions are objects) and assert the typed `Corgi` shape once.
   const withMethod =
     (method: string) =>
     (url: string, options?: RequestOptions): Promise<unknown> =>
@@ -290,10 +270,9 @@ export function createCorgi(defaults: CorgiOptions = {}): Corgi {
 }
 
 /**
- * Merge parent + child client defaults; headers and plugins COMBINE, not replace.
- *
- * Internal (not re-exported from './index.ts'): `/chonk` reuses it to merge its own
- * option bag, hence the generic — `T` carries the extra chonk keys through.
+ * Merge parent + child client defaults; headers and plugins combine, not
+ * replace. Internal, but `/chonk` reuses it for its own option bag — the
+ * generic `T` carries the extra chonk keys through.
  */
 export function mergeCorgiOptions<T extends CorgiOptions>(base: T, extra?: T): T {
   if (!extra) return base;
@@ -306,8 +285,8 @@ export function mergeCorgiOptions<T extends CorgiOptions>(base: T, extra?: T): T
 }
 
 /**
- * The one export you need. `corgi` is a zero-config singleton for one-off calls,
- * and `corgi.create(...)` builds a configured instance:
+ * The one export you need: a zero-config singleton for one-off calls, plus
+ * `corgi.create(...)` for a configured instance.
  *
  *   import { corgi } from '@itsy/corgi'
  *   const user = await corgi.get<User>('https://api.example.com/users/1')
@@ -315,8 +294,7 @@ export function mergeCorgiOptions<T extends CorgiOptions>(base: T, extra?: T): T
  *   const api = corgi.create({ baseURL: 'https://api.example.com', plugins: [withRetry()] })
  *   const me = await api.get<User>('/me')
  *
- * The singleton holds no per-request state, so it's safe to share anywhere
- * (including servers). Stateful plugins (retry keeps none; cancel-previous does)
- * belong on a `corgi.create({ plugins: [...] })` instance.
+ * The singleton holds no per-request state, so it's safe to share anywhere.
+ * Stateful plugins (abortPrevious, swr) belong on a `create` instance.
  */
 export const corgi: CorgiAPI = Object.assign(createCorgi(), { create: createCorgi });

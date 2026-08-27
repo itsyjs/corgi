@@ -34,5 +34,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "test", "tsdown.config.ts", "scripts"]
+  "include": ["src", "test", "tsdown.config.ts"]
 }

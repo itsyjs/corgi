@@ -22,23 +22,21 @@ export default defineConfig({
   // and shipping a single format avoids the dual-package hazard (which would be
   // real here: a duplicated module = a split-brain abort-previous slot).
   format: ['esm'],
-  // `neutral` = don't assume Node built-ins; we only use web-standard globals.
+  // `neutral` = don't assume Node built-ins; only web-standard globals are used.
   platform: 'neutral',
   target: 'es2022',
   dts: true,
   treeshake: true,
   minify: true,
   clean: true,
-  // No content hashes on internal chunk filenames — this is an npm package, not a
-  // long-cached web asset. Entry files (index.js, retry.js, …) are never hashed
-  // regardless; this drops the `-[hash]` from shared chunks (js + .d.ts). Chunks
-  // aren't in the `exports` map, so their names are internal-only.
+  // No content hashes on chunk filenames — this is an npm package, not a
+  // long-cached web asset. Entries are never hashed regardless; this drops the
+  // `-[hash]` from shared chunks, whose names are internal-only (not in `exports`).
   hash: false,
-  // Prefix shared chunks (js + .d.ts) so they can NEVER claim an entry's
-  // filename. Without this, rolldown's dts chunk naming handed the shared
-  // corgi/url/parse chunk the name `index.d.ts` — demoting the real root
-  // entry to `index2.d.ts` and breaking every `types` condition in `exports`
-  // (the published surface suddenly had only minified re-export names).
+  // Prefix shared chunks (js + .d.ts) so they can never claim an entry's
+  // filename: rolldown's dts chunk naming once handed the shared chunk the name
+  // `index.d.ts`, demoting the real root entry to `index2.d.ts` and breaking
+  // every `types` condition in `exports`.
   outputOptions: {
     chunkFileNames: 'chunk-[name].js',
   },

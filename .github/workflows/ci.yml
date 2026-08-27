@@ -44,6 +44,6 @@ jobs:
             echo '### export-size — `@itsy/corgi` root exports (min+brotli)'
             echo ''
             echo '```'
-            pnpm -s size:exports || echo 'export-size failed'
+            pnpm -s size:check || echo 'export-size failed'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

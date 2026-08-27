@@ -3,7 +3,8 @@
 The opt-in middleware, each on its own import path. Conceptual guides:
 [Plugins overview](/plugins/) · [Write your own](/plugins/custom). Per-plugin:
 [timeout](/plugins/timeout) · [retry](/plugins/retry) ·
-[abort-previous](/plugins/abort-previous) · [schema](/plugins/schema).
+[abort-previous](/plugins/abort-previous) · [swr](/plugins/swr) ·
+[schema](/plugins/schema).
 
 ## `withTimeout`
 
@@ -50,6 +51,27 @@ function abortPrevious(): Plugin;
 Aborts the previous in-flight request when a new one starts. Tagged `ORDER.cancel`
 (outermost). **Stateful** — keep it at the client level. Full behaviour:
 [abort-previous](/plugins/abort-previous).
+
+## `swr`
+
+```ts
+// @itsy/corgi/swr
+function swr(options: SwrOptions | number): Plugin;
+
+interface SwrOptions {
+  fresh: number; //         serve-from-memory window, ms
+  stale?: number; //        grace window added after `fresh`, default 0
+  errorBackoff?: number; //  wait between failed refreshes, default 0
+  accept?: (response: Response) => boolean | Promise<boolean>; // default: response.ok
+  onError?: (info: { url: string; error?: unknown; response?: Response }) => void;
+}
+```
+
+A bare number is shorthand for `{ fresh: n }` (`0` = pure in-flight dedupe). GETs
+only, tagged `ORDER.swr`. Fresh hits skip the network; stale hits are served
+instantly while a detached background refresh updates the store. **Stateful** —
+keyed by the final url alone, so don't share one client across users. Full
+behaviour: [swr](/plugins/swr).
 
 ## `schema`
 

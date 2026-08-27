@@ -1,21 +1,17 @@
 /**
  * schema.ts — runtime validation via Standard Schema, at "@itsy/corgi/schema".
  *
- * This module shows off the client's generic `transform` hook: `schema(MySchema)`
- * returns a transform, so `client.get(url, { transform: schema(User) })` both
- * *validates at runtime* and *infers the return type* — turning `<T>` from an
- * unchecked cast into a real guarantee.
- *
- * Standard Schema (https://standardschema.dev) is a vendor-neutral interface
- * implemented by Zod 3.24+, Valibot, ArkType, and others. We depend only on its
- * TYPE — inlined below — so this stays zero-dependency; the actual validator is
- * whatever library you already use.
+ * `schema(MySchema)` returns a `transform`, so
+ * `client.get(url, { transform: schema(User) })` both *validates at runtime*
+ * and *infers the return type* — turning `<T>` from an unchecked cast into a
+ * real guarantee. Standard Schema (https://standardschema.dev) is a
+ * vendor-neutral interface implemented by Zod 3.24+, Valibot, ArkType, and
+ * others; only its type is depended on — inlined below — so this stays
+ * zero-dependency.
  */
 
-/* -------------------------------------------------------------------------- */
-/* Inlined Standard Schema v1 spec (types only — erased at build).            */
-/* Mirrors @standard-schema/spec so any conforming validator works.          */
-/* -------------------------------------------------------------------------- */
+// Inlined Standard Schema v1 spec (types only — erased at build); mirrors
+// @standard-schema/spec so any conforming validator works.
 
 /** A schema exposing the `~standard` contract (Zod/Valibot/ArkType/etc.). */
 export interface StandardSchemaV1<Input = unknown, Output = Input> {
@@ -53,8 +49,6 @@ export declare namespace StandardSchemaV1 {
   export type InferOutput<Schema extends StandardSchemaV1> = NonNullable<Schema['~standard']['types']>['output'];
 }
 
-/* -------------------------------------------------------------------------- */
-
 /**
  * Thrown when a response fails schema validation. Distinct from `HttpError`
  * (bad status) and network errors, so callers can branch on it. Carries the
@@ -77,9 +71,9 @@ export function isValidationError(error: unknown): error is ValidationError {
 }
 
 /**
- * Build a `transform` that validates the parsed value against a Standard Schema,
- * returning the schema's inferred output type (and throwing {@link ValidationError}
- * on failure). Drop it straight into a request:
+ * Build a `transform` that validates the parsed value against a Standard
+ * Schema, returning the schema's inferred output type and throwing
+ * {@link ValidationError} on failure:
  *
  *   import { z } from 'zod'
  *   import { schema } from '@itsy/corgi/schema'
@@ -87,21 +81,14 @@ export function isValidationError(error: unknown): error is ValidationError {
  *   const User = z.object({ id: z.number(), name: z.string() })
  *   const user = await api.get('/users/1', { transform: schema(User) }) // typed + validated
  *
- * Any Standard Schema validator works identically — e.g. Valibot or ArkType:
- *
- *   import * as v from 'valibot'
- *   const User = v.object({ id: v.number(), name: v.string() })
- *   const user = await api.get('/users/1', { transform: schema(User) })
- *
- * The returned function matches the client's `transform` signature exactly
- * (`(value, response?) => Promise<Output>`); the response argument is accepted
- * but unused here.
+ * Any Standard Schema validator (Valibot, ArkType, …) works identically. The
+ * returned function matches the client's `transform` signature exactly; the
+ * response argument is accepted but unused here.
  */
 export function schema<S extends StandardSchemaV1>(
   spec: S,
 ): (value: unknown, response?: Response) => Promise<StandardSchemaV1.InferOutput<S>> {
   return async (value) => {
-    // `validate` may be sync or async; `await` handles both uniformly.
     const result = await spec['~standard'].validate(value);
     if (result.issues) throw new ValidationError(result.issues);
     return result.value;

@@ -2,7 +2,7 @@
  * @itsy/corgi — root entry.
  *
  * This barrel exposes the client (`corgi` + `corgi.create`), the composition
- * engine (`compose`, `order`, `ORDER`), and the error type. EVERY plugin —
+ * engine (`compose`, `order`, `ORDER`), and the error type. Every plugin —
  * including timeout — is opt-in on its own import path, so it costs nothing
  * unless you reach for it:
  *

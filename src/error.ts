@@ -1,19 +1,18 @@
 /**
  * error.ts — the single error type the client throws, plus name-based guards.
  *
- * Native `fetch` resolves successfully even on 404/500 — you have to remember to
- * check `res.ok` yourself. That silent-success is the #1 footgun Corgi
- * fixes: the value-returning client throws `HttpError` on any non-2xx response.
- * (Use `client.raw(...)` if you want the raw `Response` and no throwing.)
+ * Native `fetch` resolves successfully even on 404/500; that silent success is
+ * the #1 footgun corgi fixes — the value-returning client throws `HttpError` on
+ * any non-2xx response. (`client.raw(...)` returns the raw `Response`, no throwing.)
  */
 
 /**
  * Thrown by the client when a response has a non-2xx status (unless
  * `throwOnError: false`).
  *
- * `response` is left with its body UNREAD — `data` is parsed from a clone — so
- * `err.response` is still fully readable (`await err.response.text()` works, once,
- * like any body). `data` is a best-effort parse of the error body (JSON or text).
+ * `response` is left with its body unread — `data` is parsed from a clone — so
+ * `err.response` is still fully readable (`await err.response.text()` works,
+ * once, like any body). `data` is a best-effort parse of the error body.
  *
  * `data` is typed `unknown` by default (error shapes aren't known at compile
  * time), but the class is generic: name your error payload via the guard —
@@ -21,10 +20,9 @@
  */
 export class HttpError<T = unknown> extends Error {
   override readonly name = 'HttpError';
-  // `declare` keeps the (readonly) types + `.d.ts` surface but emits NO runtime
-  // field slots — the constructor below assigns them. Without `declare`, es2022
-  // would emit five empty `field;` declarations that the constructor immediately
-  // overwrites: pure dead bytes.
+  // `declare` keeps the readonly types + `.d.ts` surface but emits no runtime
+  // field slots — es2022 would otherwise emit five empty `field;` declarations
+  // the constructor immediately overwrites: pure dead bytes.
   declare readonly status: number;
   declare readonly statusText: string;
   declare readonly url: string;
@@ -57,8 +55,8 @@ export function isHttpError<T = unknown>(error: unknown): error is HttpError<T> 
 
 /**
  * Did a request time out (as opposed to being cancelled by the caller)?
- * Timeouts abort with a `DOMException` named `"TimeoutError"`; caller aborts use
- * `"AbortError"`. We compare the name, not `instanceof`, so the check is name-based.
+ * Timeouts abort with a `DOMException` named `"TimeoutError"`; caller aborts
+ * use `"AbortError"`. Name-based, not `instanceof`, for the same realm-safety.
  */
 export function isTimeoutError(error: unknown): boolean {
   return hasName(error, 'TimeoutError');

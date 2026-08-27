@@ -1,19 +1,16 @@
 /**
  * @itsy/corgi docs theme — "Graphite Ember".
  *
- * Two tiers:
- *   Tier 1 — palettes: full OKLCH ramps (--orange/--rose/--teal 50→950, --graphite
- *            0→950). Mode-agnostic; higher number = darker.
- *   Tier 2 — semantic mapping onto VitePress --vp-c-* vars (light in :root, dark
- *            overrides). Every surface maps to a palette STEP — no ad-hoc alpha.
- *
- * Orange is one regularized hue (42); its brand steps (300–800) are WCAG-verified.
- * The only intentional transparency is the hero glow (a blurred bloom that must
- * fade to transparent), whose colors are still sourced from palette steps.
+ * Two tiers: Tier 1 — full OKLCH palette ramps (--orange/--rose/--teal 50→950,
+ * --graphite 0→950), mode-agnostic, higher number = darker. Tier 2 — semantic
+ * mapping onto VitePress --vp-c-* vars (light in :root, dark overrides); every
+ * surface maps to a palette step, no ad-hoc alpha. Orange is one regularized
+ * hue (42) with WCAG-verified brand steps (300–800); the only intentional
+ * transparency is the hero glow, whose colors still come from palette steps.
  */
 
 :root {
-  /* ── Tier 1: palettes ─────────────────────────────────────────── */
+  /* Tier 1: palettes */
   /* orange (hue 42) — brand + tips */
   --orange-50: oklch(96% 0.006 42);
   --orange-100: oklch(92% 0.018 42);
@@ -69,7 +66,7 @@
   --graphite-900: oklch(18.5% 0.006 260);
   --graphite-950: oklch(0 0 0);
 
-  /* ── Tier 2: semantic (light) ─────────────────────────────────── */
+  /* Tier 2: semantic (light) */
   --vp-c-brand-1: var(--orange-800); /* links/hero/tip — 7.25:1 on white */
   --vp-c-brand-2: var(--orange-700); /* button hover — white 6.14:1 */
   --vp-c-brand-3: var(--orange-600); /* button bg — white 5.20:1 */

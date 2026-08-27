@@ -2,9 +2,7 @@ import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { joinURL, withQuery, type Query } from '#url';
 
-// ---------------------------------------------------------------------------
-// joinURL — prefix join (NOT `new URL`), so the base path is never dropped.
-// ---------------------------------------------------------------------------
+// joinURL — prefix join (not `new URL`), so the base path is never dropped.
 const joinCases: Array<[base: string | undefined, path: string, out: string]> = [
   ['https://a.com/v1', 'users', 'https://a.com/v1/users'],
   ['https://a.com/v1/', '/users', 'https://a.com/v1/users'],
@@ -25,15 +23,10 @@ suite('joinURL', () => {
   }
 });
 
-// ---------------------------------------------------------------------------
 // withQuery — merge into existing query, preserve #hash, encode via
-// URLSearchParams.
-//
-// NOTE on `null`: we skip it (like axios), we do NOT emit a bare `?flag`. The
-// web platform's URLSearchParams can't represent a value-less key (it normalizes
-// `?flag` -> `flag=`), so neither do we. This is deliberate — see the two "pin"
-// cases at the end.
-// ---------------------------------------------------------------------------
+// URLSearchParams. `null` is skipped (like axios), never emitted as a bare
+// `?flag`: URLSearchParams can't represent a value-less key (it normalizes
+// `?flag` -> `flag=`). Deliberate — see the two pin cases at the end.
 const queryCases: Array<[url: string, query: Query | undefined, out: string]> = [
   // basics
   ['/x', { a: 1, b: undefined, c: null }, '/x?a=1'], // nullish skipped
@@ -49,7 +42,7 @@ const queryCases: Array<[url: string, query: Query | undefined, out: string]> = 
   ['/', { u: '好' }, '/?u=%E5%A5%BD'], // unicode -> UTF-8 %-escapes
 
   // replace semantics
-  ['/x?foo=1', { foo: 2 }, '/x?foo=2'], // scalar REPLACES existing same key
+  ['/x?foo=1', { foo: 2 }, '/x?foo=2'], // scalar replaces existing same key
   ['/x?t=old', { t: ['a', 'b'] }, '/x?t=a&t=b'], // array replaces existing, then appends
 
   // scalar coverage
@@ -65,8 +58,8 @@ const queryCases: Array<[url: string, query: Query | undefined, out: string]> = 
   // existing query on an absolute URL
   ['http://a.com?v=1', { x: 2 }, 'http://a.com?v=1&x=2'],
 
-  // --- pinned (deliberate) behaviours ---
-  ['/x', { flag: null }, '/x'], // null -> omitted, NOT a bare `?flag` (see note above)
+  // pinned (deliberate) behaviours
+  ['/x', { flag: null }, '/x'], // null -> omitted, not a bare `?flag` (see note above)
   ['/x?test', { a: 1 }, '/x?test=&a=1'], // URLSearchParams normalizes a bare `?test` -> `test=`
 ];
 

@@ -28,7 +28,7 @@ Approximate share of the always-shipped client.
 | `headers.ts` | ~3%    | case-insensitive header merge                                                                                       |
 | scaffolding  | ~6%    | import/export wiring                                                                                                |
 
-Run `pnpm size` for exact per-export gzip budgets, or `pnpm size:exports` for the
+Run `pnpm size` for exact per-export gzip budgets, or `pnpm size:check` for the
 full per-export breakdown of the root import.
 
 ## The footgun catalog

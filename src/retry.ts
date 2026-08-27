@@ -1,12 +1,10 @@
 /**
  * retry.ts — `withRetry`, exported at "@itsy/corgi/retry".
  *
- * Opt-in: importing this module is the only way its bytes enter your bundle.
- *
- * It retries only *idempotent* requests with *replayable* bodies, on transient
+ * Retries only *idempotent* requests with *replayable* bodies, on transient
  * statuses and network/timeout errors, using exponential backoff with full
- * jitter and honouring `Retry-After`. It never retries a caller-cancelled
- * request, and its backoff wait is itself abortable.
+ * jitter and honouring `Retry-After`. Never retries a caller-cancelled request;
+ * the backoff wait is itself abortable.
  */
 
 import type { Fetcher, Plugin } from './core.ts';
@@ -32,12 +30,12 @@ export interface RetryOptions {
    */
   methods?: readonly string[];
   /**
-   * Response statuses that trigger a retry. Default: 408/429/500/502/503/504. A
-   * `Retry-After` header (seconds or an HTTP-date) on a retried response is
-   * honored in place of computed backoff, capped at `maxDelay`. FRACTIONAL
-   * seconds are honored too (`Retry-After: 0.001` waits 1ms) — that's CONTRACT,
-   * not an accident of parsing: it's the documented lever for exercising retry
-   * against a client whose config a test can't touch (see "@itsy/corgi/testing").
+   * Response statuses that trigger a retry. Default: 408/429/500/502/503/504.
+   * A `Retry-After` header (seconds or an HTTP-date) on a retried response is
+   * honored in place of computed backoff, capped at `maxDelay` — fractional
+   * seconds included (`Retry-After: 0.001` waits 1ms). That's contract, not an
+   * accident of parsing: it's the documented lever for exercising retry against
+   * a client whose config a test can't touch (see "@itsy/corgi/testing").
    */
   statuses?: readonly number[];
   /**
@@ -48,18 +46,14 @@ export interface RetryOptions {
   onRetry?: (info: { attempt: number; delay: number; error?: unknown; response?: Response }) => void;
 }
 
-// Methods safe to send more than once (no additional side effects). POST and
-// PATCH are intentionally excluded: replaying them can double-create/charge.
+// Safe to send more than once. POST/PATCH excluded: replaying can double-create/charge.
 const IDEMPOTENT = new Set(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'TRACE']);
 
 // Transient statuses where a later attempt has a real chance of succeeding.
 const RETRY_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 
-/**
- * A body can only be retried if it can be re-sent byte-for-byte. Value bodies
- * qualify; a `ReadableStream` is consumed by the first attempt and cannot be
- * replayed, so a request carrying one is never retried.
- */
+// A body qualifies only if it can be re-sent byte-for-byte; a ReadableStream
+// is consumed by the first attempt and can't be replayed.
 function isReplayable(body: BodyInit | null | undefined): boolean {
   return (
     body == null ||
@@ -78,9 +72,8 @@ function isCallerAbort(error: unknown): boolean {
 }
 
 // Deterministic bugs that surface as a network-looking TypeError — e.g. a
-// detached fetch's "Illegal invocation" on Cloudflare Workers. Retrying them just
-// burns attempts. (core.ts's bind-safe fetch prevents that specific case at the
-// source; this is defense in depth so it's never mistaken for a transient error.)
+// detached fetch's "Illegal invocation" on Cloudflare Workers. Retrying them
+// just burns attempts; core.ts prevents that case, this is defense in depth.
 function isProgrammerError(error: unknown): boolean {
   return (
     error instanceof TypeError &&
@@ -101,21 +94,17 @@ function isRetryableError(error: unknown): boolean {
   );
 }
 
-// Exponential backoff with "full jitter": a random point in [0, window). The
-// randomness scatters many clients so they don't retry in lockstep (thundering
-// herd); the window doubles each attempt but is clamped to `maxDelay`.
+// Full jitter: a random point in [0, window), the window doubling per attempt
+// and clamped to `maxDelay` — scatters clients so they don't retry in lockstep.
 function fullJitter(baseDelay: number, attempt: number, maxDelay: number): number {
   return Math.random() * Math.min(maxDelay, baseDelay * 2 ** attempt);
 }
 
-/**
- * Prefer the server's `Retry-After` over computed backoff (it knows best). The
- * header is either a number of seconds or an HTTP-date — both handled — and the
- * result is capped at `maxDelay` so a broken "wait 2 hours" can't hang the client.
- * `Number()` (not `parseInt`) is deliberate: fractional seconds are kept, which
- * `@itsy/corgi/testing` documents as the way to drive retry in ~1ms against a
- * module-scope client. A parse-to-spec "cleanup" here would break those suites.
- */
+// Prefer the server's `Retry-After` (seconds or an HTTP-date) over computed
+// backoff, capped at `maxDelay` so a broken "wait 2 hours" can't hang the
+// client. `Number()` (not `parseInt`) is deliberate: fractional seconds are
+// kept, which `@itsy/corgi/testing` documents as the way to drive retry in
+// ~1ms. A parse-to-spec "cleanup" here would break those suites.
 function nextDelay(response: Response | undefined, attempt: number, baseDelay: number, maxDelay: number): number {
   const header = response?.headers.get('retry-after');
   if (header) {
@@ -126,11 +115,9 @@ function nextDelay(response: Response | undefined, attempt: number, baseDelay: n
   return fullJitter(baseDelay, attempt, maxDelay);
 }
 
-/**
- * A promise-wrapped `setTimeout` that also rejects the instant `signal` aborts.
- * Without this, a cancelled request would still sit out the remaining backoff
- * before noticing. Always clears its timer and listener so nothing leaks.
- */
+// A promise-wrapped `setTimeout` that rejects the instant `signal` aborts —
+// otherwise a cancelled request would sit out the remaining backoff. Always
+// clears its timer and listener.
 function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(signal.reason);
@@ -151,21 +138,20 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
  * full jitter and `Retry-After` support.
  *
  * Eligibility is fixed once per call: the method must be in `methods` (default
- * idempotent set) AND the body must be replayable. Value bodies (none, string,
- * `URLSearchParams`, `Blob`/`File`, `FormData`, `ArrayBuffer`/typed arrays) are
- * replayable; a `ReadableStream` body is consumed by the first attempt and so is
- * NEVER retried, even on an idempotent method.
+ * idempotent set) and the body must be replayable. Value bodies (none, string,
+ * `URLSearchParams`, `Blob`/`File`, `FormData`, `ArrayBuffer`/typed arrays)
+ * qualify; a `ReadableStream` body is consumed by the first attempt and is
+ * never retried, even on an idempotent method.
  *
- * What triggers a retry: a response whose status is in `statuses`; a thrown
- * per-attempt `TimeoutError`; or a genuine network `TypeError`. What does NOT: a
- * caller `AbortError` (or a fired total-deadline signal), and a programmer-error
- * `TypeError` (e.g. "is not a function", "Illegal invocation").
+ * A retry is triggered by a status in `statuses`, a thrown per-attempt
+ * `TimeoutError`, or a genuine network `TypeError` — never by a caller
+ * `AbortError` (or a fired total-deadline signal) or a programmer-error
+ * `TypeError` ("is not a function", "Illegal invocation").
  *
- * Ordering: tagged `ORDER.retry` (300) so it sits OUTSIDE `withTimeout` (400).
- * That means each attempt gets a fresh timeout and a fired timeout is retried.
- * A TOTAL deadline is the caller's job — pass `signal: AbortSignal.timeout(ms)`;
- * when it fires, `init.signal.aborted` is true and the loop stops instead of
- * retrying (even though a timeout technically threw).
+ * Tagged `ORDER.retry` (300), outside `withTimeout` (400): each attempt gets a
+ * fresh timeout and a fired timeout is retried. A total deadline is the
+ * caller's job — pass `signal: AbortSignal.timeout(ms)`; when it fires, the
+ * loop stops instead of retrying.
  */
 export function withRetry(options: RetryOptions | number = {}): Plugin {
   const {
@@ -183,12 +169,10 @@ export function withRetry(options: RetryOptions | number = {}): Plugin {
   return order(ORDER.retry, (next: Fetcher): Fetcher => async (url, init = {}) => {
     const method = (init.method ?? 'GET').toUpperCase();
     const signal = init.signal ?? undefined;
-    // Eligibility is fixed for the whole loop: right method AND a replayable body.
     const eligible = retryableMethods.has(method) && isReplayable(init.body);
 
     for (let attempt = 0; ; attempt++) {
-      // If the caller cancelled — or a total-deadline AbortSignal.timeout fired —
-      // between attempts, stop immediately; never start another try.
+      // Cancelled between attempts (caller or total deadline) — never start another try.
       if (signal?.aborted) throw signal.reason;
 
       let response: Response;
@@ -205,11 +189,9 @@ export function withRetry(options: RetryOptions | number = {}): Plugin {
         continue;
       }
 
-      // Got a response: return it unless it's a retryable status with tries left.
       if (attempt >= retries || !eligible || !retryableStatuses.has(response.status)) return response;
 
-      // We're discarding this response — cancel its body so the underlying
-      // connection is released back to the pool instead of leaking.
+      // Discarded — cancel the body so the connection returns to the pool.
       response.body?.cancel().catch(() => {});
 
       const delay = nextDelay(response, attempt, baseDelay, maxDelay);

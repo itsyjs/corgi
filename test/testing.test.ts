@@ -810,7 +810,7 @@ suite('mockFetch: settled', () => {
 
   test('settled() catches a follow-up the handler defers with setTimeout(0)', async () => {
     // Regression: with a single quiet-turn probe this failed deterministically.
-    // The probe timer is created during the microtask drain BEFORE the
+    // The probe timer is created during the microtask drain before the
     // handler's own timer (the handler sits behind body parsing), so the first
     // probe always fired early and saw a quiet log. Two consecutive quiet
     // turns are required precisely so the handler's timer gets to run first.

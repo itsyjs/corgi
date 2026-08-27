@@ -54,7 +54,7 @@ suite('withRetry', () => {
       plugins: [
         withRetry({
           retries: 1,
-          backoff: 9999, // huge, so a computed jitter delay would NOT be ~5
+          backoff: 9999, // huge, so a computed jitter delay would not be ~5
           maxDelay: 5,
           onRetry: ({ attempt, delay }) => seen.push({ attempt, delay }),
         }),
@@ -79,7 +79,7 @@ suite('withRetry', () => {
       plugins: [
         withRetry({
           retries: 1,
-          backoff: 60_000, // if the header path were NOT taken, this test would hang for a minute
+          backoff: 60_000, // if the header path were not taken, this test would hang for a minute
           onRetry: ({ delay }) => seen.push(delay),
         }),
       ],

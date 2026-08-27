@@ -6,9 +6,9 @@ import { createFileSystemTypesCache } from '@shikijs/vitepress-twoslash/cache-fs
 // Repo root (this file lives at docs/.vitepress/config.ts).
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-// GitHub Pages project-site base. Single source of truth: used for `base` AND for
-// `head` asset URLs (VitePress does NOT auto-apply base to head). Change to '/' for
-// a user/org site or a custom domain.
+// GitHub Pages project-site base. Single source of truth: used for `base` and
+// for `head` asset URLs (VitePress does not auto-apply base to head). Change to
+// '/' for a user/org site or a custom domain.
 const base = '/corgi/';
 
 /**
@@ -29,8 +29,8 @@ const base = '/corgi/';
  *                              block (lead-in above, or footnote below). Never a link.
  *
  * Always give a block a title; VitePress otherwise renders a bare "TIP" / "INFO".
- * Prefer prose or a plain list over a block when the content IS the section — a
- * container should be an aside, not the body.
+ * Prefer prose or a plain list over a block when the content is the section
+ * itself — a container should be an aside, not the body.
  */
 
 // https://vitepress.dev/reference/site-config

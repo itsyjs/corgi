@@ -242,7 +242,7 @@ for `AbortSignal.any` (see the timeout table) — use `@itsy/corgi/timeout` on o
 | `@itsy/corgi` — `{ corgi }`       | ~1.45 KB |
 | `@itsy/corgi/retry`               | ~0.94 KB |
 | `@itsy/corgi/abort-previous`      | ~0.30 KB |
-| `@itsy/corgi/swr`                 | ~0.46 KB |
+| `@itsy/corgi/swr`                 | ~0.58 KB |
 | `@itsy/corgi/timeout`             | ~0.33 KB |
 | `@itsy/corgi/timeout-modern`      | ~0.22 KB |
 | `@itsy/corgi/schema`              | ~0.19 KB |

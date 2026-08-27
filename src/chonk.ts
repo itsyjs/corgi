@@ -1,32 +1,22 @@
 /**
  * chonk.ts — batteries-included entry, exported at "@itsy/corgi/chonk".
  *
- * For contexts where bundle size doesn't matter (Node, servers, scripts, tests):
- * it re-exports the whole library AND upgrades `corgi` so the built-in
+ * For contexts where bundle size doesn't matter (Node, servers, scripts,
+ * tests): re-exports the whole library and upgrades `corgi` so the built-in
  * plugins become first-class options instead of a hand-composed `plugins` array:
  *
  *   import { corgi } from '@itsy/corgi/chonk'
  *   const api = corgi.create({
  *     baseURL: 'https://api.example.com',
- *     timeout: 5000,        // -> withTimeout(5000)   (hand-rolled, 2022-safe)
+ *     timeout: 5000,        // -> withTimeout(5000)
  *     retry: 3,             // -> withRetry(3)
  *     abortPrevious: true,  // -> abortPrevious()
- *     swr: 60_000,          // -> swr(60_000)         (a minute of fresh cache)
+ *     swr: 60_000,          // -> swr(60_000)
  *   })
  *
- * `extend` takes them too, and they OVERRIDE the parent's rather than stacking:
- *
- *   const searchApi = api.extend({ abortPrevious: true })  // its own cancel slot
- *
- * Note `schema` is NOT a client option — validation is per-call (each endpoint has
- * its own shape), so it stays a `transform` exactly like in core: `schema` is
- * re-exported here, used as `client.get(url, { transform: schema(User) })`.
- *
- * For a minimal browser/edge bundle, import the client from '@itsy/corgi' and pull
- * only the plugins you need from their subpaths — none of this entry ships then.
- *
- * (This entry deliberately defeats tree-shaking for its importer — that's the
- * point. It adds no bloat to the other entries.)
+ * For a minimal browser/edge bundle, import from '@itsy/corgi' and the plugin
+ * subpaths instead — none of this entry ships then. (Defeating tree-shaking
+ * for its importer is the point; it adds no bloat to the other entries.)
  */
 
 import { createCorgi as createCoreCorgi, mergeCorgiOptions } from './corgi.ts';
@@ -37,8 +27,8 @@ import { withTimeout } from './timeout.ts';
 import { swr, type SwrOptions } from './swr.ts';
 
 /**
- * {@link CorgiOptions} plus first-class options for the built-in plugins. Note
- * `schema` is deliberately NOT an option here — validation is per-call (each
+ * {@link CorgiOptions} plus first-class options for the built-in plugins.
+ * `schema` is deliberately not an option here — validation is per-call (each
  * endpoint has its own shape), so use it as a `transform`:
  * `client.get(url, { transform: schema(User) })`.
  */
@@ -59,9 +49,9 @@ export interface CorgiChonkOptions extends CorgiOptions {
 
 /** A chonk client: a {@link Corgi} whose `extend` also takes {@link CorgiChonkOptions}. */
 export interface CorgiChonk extends Corgi {
-  /** Derive a new client. Same rules as core — scalars override, `headers` merge,
-   * `plugins` concatenate — plus `retry` / `timeout` / `abortPrevious` / `swr`, which
-   * OVERRIDE the parent's rather than stacking a second layer:
+  /** Derive a new client. Same rules as core — scalars override, `headers`
+   * merge, `plugins` concatenate — plus `retry` / `timeout` / `abortPrevious` /
+   * `swr`, which override the parent's rather than stacking a second layer:
    *
    *   const api = corgi.create({ baseURL: 'https://foo.bar' })
    *   const searchApi = api.extend({ abortPrevious: true })
@@ -76,10 +66,10 @@ export interface CorgiChonkAPI extends CorgiChonk {
 }
 
 /**
- * Like the core factory, but with `retry` / `timeout` / `abortPrevious` / `swr` as
- * options. They're translated to plugins and merged with any you pass in
- * `plugins`; the core client order-sorts everything, so the sequence here is
- * irrelevant. Everything else behaves exactly like `@itsy/corgi`'s `corgi.create`.
+ * Like the core factory, but with `retry` / `timeout` / `abortPrevious` / `swr`
+ * as options. They're translated to plugins and merged with any you pass in
+ * `plugins`; the core client order-sorts everything. Otherwise behaves exactly
+ * like `@itsy/corgi`'s `corgi.create`.
  */
 export function createCorgi(options: CorgiChonkOptions = {}): CorgiChonk {
   const { retry, timeout, abortPrevious: cancel, swr: cache, ...rest } = options;
@@ -89,29 +79,24 @@ export function createCorgi(options: CorgiChonkOptions = {}): CorgiChonk {
   if (retry != null) plugins.push(withRetry(retry));
   if (timeout) plugins.push(withTimeout(timeout));
 
-  // Core's `extend` re-enters the CORE factory, so it would drop the options
-  // above. Override it to re-enter this one, merging the raw (untranslated)
-  // option bag: re-translating is what lets a child override `timeout`/`retry`
-  // instead of stacking a second layer, and switch `abortPrevious` back off.
-  // Nothing is lost by minting fresh plugins — a plugin's state lives in the
-  // closure `compose` builds per client, so a derived client never shared the
-  // parent's anyway (see abort-previous.ts).
+  // Core's `extend` re-enters the core factory and would drop these options.
+  // Re-enter this one instead, merging the raw option bag: re-translating is
+  // what lets a child override `timeout`/`retry` rather than stack a second
+  // layer. Minting fresh plugins loses nothing — plugin state lives in the
+  // closure `compose` builds per client, so a child never shared it anyway.
   return Object.assign(createCoreCorgi({ ...rest, plugins }), {
     extend: (extra?: CorgiChonkOptions): CorgiChonk => createCorgi(mergeCorgiOptions(options, extra)),
   }) as CorgiChonk;
 }
 
 /**
- * The enhanced root export: a zero-config singleton plus `corgi.create(...)` whose
- * options include `retry` / `timeout` / `abortPrevious` / `swr`. Mirrors `@itsy/corgi`'s
- * `corgi`, but batteries-included.
+ * The enhanced root export: mirrors `@itsy/corgi`'s `corgi`, but `create`
+ * accepts `retry` / `timeout` / `abortPrevious` / `swr`.
  */
 export const corgi: CorgiChonkAPI = Object.assign(createCorgi(), { create: createCorgi });
 
-/* ---- re-export the rest of the public surface ---------------------------- */
-/* `corgi` is intentionally the enhanced version above, so we can't `export *`  */
-/* from './index.ts' (that would clash on the name).                            */
-
+// `corgi` here is the enhanced version, so `export *` from './index.ts' would
+// clash on the name — re-export the rest explicitly.
 export { compose, order, ORDER, HttpError, isHttpError, isTimeoutError, isAbortError } from './index.ts';
 export type {
   Fetcher,
@@ -126,11 +111,9 @@ export type {
 } from './index.ts';
 export type { Corgi, CorgiAPI, CorgiOptions, RetryOptions, SwrOptions };
 
-// Plugins: the ones used above are re-exported from their local bindings; the
-// modern timeout is aliased so both timeout impls are reachable from `/chonk`.
+// The modern timeout is aliased so both timeout impls are reachable from `/chonk`.
 export { withRetry, abortPrevious, withTimeout, swr };
 export { withTimeout as withTimeoutModern } from './timeout-modern.ts';
 
-// Schema (Standard Schema transform + validation error).
 export { schema, parseWith, ValidationError, isValidationError } from './schema.ts';
 export type { StandardSchemaV1 } from './schema.ts';

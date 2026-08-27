@@ -71,7 +71,7 @@ suite('chonk: extend', () => {
   test('`abortPrevious` can be turned on by extend; the parent is unaffected', async () => {
     const http = mockFetch();
     // `delay` stands in for a request slow enough to still be in flight when the
-    // next one starts, but that RESOLVES when nothing cancels it — so "was NOT
+    // next one starts, but that resolves when nothing cancels it — so "was not
     // cancelled" is as deterministic to assert as "was cancelled".
     http.any({ json: { ok: true }, delay: 20 });
     const api = corgi.create({ baseURL: 'https://foo.bar', fetch: http.fetch });
