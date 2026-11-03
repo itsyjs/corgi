@@ -1,10 +1,11 @@
 import { suite, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { getEventListeners } from 'node:events';
 import { corgi } from '#index';
 import { withRetry } from '#retry';
 import { withTimeout } from '#timeout';
 import { isAbortError, isHttpError, isTimeoutError } from '#error';
-import { abortError, httpError, mockFetch, networkError, timeoutError } from '#testing';
+import { abortError, httpError, mockFetch, networkError, timeoutError, type MockReply } from '#testing';
 
 // Tiny backoff so retry-driving tests stay fast.
 const fast = { retries: 3, backoff: 1, maxDelay: 2 } as const;
@@ -687,6 +688,168 @@ suite('mockFetch: signals & hangs', () => {
       () => http.fetch('/x'),
       (err: Error) => err.name === 'MockRouteError' && /no routes registered/.test(err.message),
     );
+  });
+});
+
+suite('mockFetch: aborts reach the body', () => {
+  const listeners = (signal: AbortSignal): number => getEventListeners(signal, 'abort').length;
+
+  const replies: [string, MockReply][] = [
+    ['{ json }', { json: { ok: true } }],
+    ['{ text }', { text: 'ok' }],
+    ['{ status, body }', { status: 200, body: new Blob(['ok']) }],
+    ['a stored Response', new Response('ok')],
+  ];
+  for (const [name, reply] of replies) {
+    test(`${name}: an abort after the Response resolves errors the unread body with the reason VERBATIM`, async () => {
+      const http = mockFetch();
+      const api = corgi.create({ fetch: http.fetch });
+      http.get('/x', reply);
+      const controller = new AbortController();
+
+      const res = await api.raw('/x', { signal: controller.signal });
+      assert.equal(res.url, '/x'); // still patched onto the rebuilt Response
+      const reason = timeoutError();
+      controller.abort(reason);
+      await assert.rejects(res.text(), (err: unknown) => err === reason);
+    });
+  }
+
+  test('an abort mid-read errors the rest of the body, buffered chunks included', async () => {
+    const http = mockFetch();
+    const encoder = new TextEncoder();
+    http.get('/feed', () => ({
+      status: 200,
+      body: new ReadableStream({
+        start(body) {
+          body.enqueue(encoder.encode('first'));
+          body.enqueue(encoder.encode('second'));
+          body.close();
+        },
+      }),
+    }));
+    const controller = new AbortController();
+
+    const res = await http.fetch('/feed', { signal: controller.signal });
+    const reader = res.body?.getReader();
+    if (!reader) return assert.fail('expected a body');
+    assert.equal(new TextDecoder().decode((await reader.read()).value), 'first');
+    controller.abort();
+    await assert.rejects(reader.read(), isAbortError);
+  });
+
+  test('an abort cancels a stream body at its source, with the same reason', async () => {
+    const http = mockFetch();
+    let cancelled: unknown;
+    http.get('/feed', () => ({
+      status: 200,
+      body: new ReadableStream({
+        cancel(reason) {
+          cancelled = reason;
+        },
+      }), // never enqueues: a download that stalls
+    }));
+    const controller = new AbortController();
+
+    const res = await http.fetch('/feed', { signal: controller.signal });
+    const pending = res.text();
+    controller.abort();
+    await assert.rejects(pending, isAbortError);
+    assert.equal(cancelled, controller.signal.reason);
+  });
+
+  test('once the body is read, the listener is gone and a late abort is a no-op', async () => {
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { json: { ok: true } });
+    const controller = new AbortController();
+
+    assert.deepEqual(await api.get('/x', { signal: controller.signal }), { ok: true });
+    assert.equal(listeners(controller.signal), 0);
+    controller.abort();
+  });
+
+  test('cancelling the body settles and releases the listener', async () => {
+    const http = mockFetch();
+    http.get('/x', { json: { ok: true } });
+    const controller = new AbortController();
+
+    const res = await http.fetch('/x', { signal: controller.signal });
+    assert.equal(listeners(controller.signal), 1);
+    await res.body?.cancel();
+    assert.equal(listeners(controller.signal), 0);
+  });
+
+  test('a stream body that fails on its own releases the listener too', async () => {
+    const http = mockFetch();
+    http.get('/x', () => ({
+      status: 200,
+      body: new ReadableStream({
+        pull(body) {
+          body.error(networkError('terminated'));
+        },
+      }),
+    }));
+    const controller = new AbortController();
+
+    const res = await http.fetch('/x', { signal: controller.signal });
+    await assert.rejects(res.text(), /terminated/);
+    assert.equal(listeners(controller.signal), 0);
+  });
+
+  test('retry under a caller signal leaves no listeners: discarded bodies are cancelled', async () => {
+    const http = mockFetch();
+    const api = corgi.create({ plugins: [withRetry(fast)], fetch: http.fetch });
+    http.get('/flaky', [{ status: 503, json: 'busy' }, { status: 503, json: 'busy' }, { json: 'ok' }]);
+    const { signal } = new AbortController();
+
+    assert.equal(await api.get('/flaky', { signal }), 'ok');
+    assert.equal(listeners(signal), 0);
+  });
+
+  test('a clone shares the abort, like a real fetch', async () => {
+    const http = mockFetch();
+    http.get('/x', { json: { ok: true } });
+    const controller = new AbortController();
+
+    const res = await http.fetch('/x', { signal: controller.signal });
+    const copy = res.clone();
+    controller.abort();
+    await assert.rejects(res.text(), isAbortError);
+    await assert.rejects(copy.text(), isAbortError);
+  });
+
+  test("an HttpError's response stays readable after a late abort — corgi already drained its clone", async () => {
+    const http = mockFetch();
+    const api = corgi.create({ fetch: http.fetch });
+    http.get('/x', { status: 500, json: { error: 'boom' } });
+    const controller = new AbortController();
+
+    const err = await api.get('/x', { signal: controller.signal }).catch((e: unknown) => e);
+    if (!isHttpError(err)) return assert.fail('expected HttpError');
+    controller.abort();
+    assert.deepEqual(await err.response.json(), { error: 'boom' });
+  });
+
+  test('built bodies stay byte streams under a signal — BYOB readers still work', async () => {
+    const http = mockFetch();
+    http.get('/x', { text: 'abc' });
+
+    const res = await http.fetch('/x', { signal: new AbortController().signal });
+    const reader = res.body?.getReader({ mode: 'byob' });
+    if (!reader) return assert.fail('expected a body');
+    const { value } = await reader.read(new Uint8Array(8));
+    assert.equal(new TextDecoder().decode(value), 'abc');
+  });
+
+  test('a null-body status has nothing to error and adds no listener', async () => {
+    const http = mockFetch();
+    http.get('/x', { status: 204 });
+    const controller = new AbortController();
+
+    const res = await http.fetch('/x', { signal: controller.signal });
+    assert.equal(res.body, null);
+    assert.equal(listeners(controller.signal), 0);
   });
 });
 

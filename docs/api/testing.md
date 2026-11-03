@@ -123,6 +123,10 @@ type MockReply =
 - **An `Error`** — the request rejects with it.
 - **A function** — computes any of the above per request, sync or async.
 
+Every body honours the request's signal, as with a real fetch: an abort before
+the body is fully read makes reading it reject with the signal's reason — see
+[aborts after the headers](/guide/testing#aborts-after-the-headers).
+
 An **array** answers in order, and the last entry repeats forever —
 `[{ status: 503 }, { json: ok }]` is the shape for retry tests. An `HttpError`
 is refused as a reply; see [the warning below](#httperror).
