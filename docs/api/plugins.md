@@ -14,8 +14,8 @@ The opt-in middleware, each on its own import path. Conceptual guides:
 function withTimeout(ms: number): Plugin;
 ```
 
-Per-attempt deadline, tagged `ORDER.timeout`. Both modules export the same
-signature and behaviour. `ms` of `0`/`Infinity` disables it. Detect with
+Per-attempt deadline, body included, tagged `ORDER.timeout`. Both modules export
+the same signature and behaviour. `ms` of `0`/`Infinity` disables it. Detect with
 [`isTimeoutError`](/api/errors#istimeouterror).
 
 ## `withRetry`

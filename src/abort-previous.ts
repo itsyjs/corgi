@@ -17,7 +17,8 @@ import { ORDER, order } from './core.ts';
  * Tagged `ORDER.cancel` (the outermost slot) so a superseding call cancels the
  * entire prior chain — including any retries or timeout it had running. The
  * superseded request rejects with an `AbortError` (detect with `isAbortError`;
- * it reads the same as a caller cancel).
+ * it reads the same as a caller cancel), even when only its body is still
+ * downloading — so read a `.raw()` Response before starting the next call.
  *
  *   import { corgi, isAbortError } from '@itsy/corgi'
  *   import { abortPrevious } from '@itsy/corgi/abort-previous'
@@ -38,15 +39,14 @@ import { ORDER, order } from './core.ts';
  */
 export function abortPrevious(): Plugin {
   return order(ORDER.cancel, (next: Fetcher): Fetcher => {
-    // One slot per plugin instance; undefined when nothing is in flight.
-    let current: AbortController | undefined;
+    // Tears down the latest call. Kept past its response, so a supersede also cuts its body.
+    let stop: (() => void) | undefined;
 
     return (url, init = {}) => {
-      current?.abort(new DOMException('Superseded by a newer request', 'AbortError'));
+      stop?.();
 
       // Fresh controller per call — never reuse one (that was @itsy/abortable's bug).
       const controller = new AbortController();
-      current = controller;
 
       // Merge the caller's signal in manually (not via AbortSignal.any, which
       // has Node bugs): forward its abort, carrying its reason, and handle the
@@ -56,11 +56,11 @@ export function abortPrevious(): Plugin {
       const onAbort = () => controller.abort(callerSignal!.reason);
       callerSignal?.addEventListener('abort', onAbort, { once: true });
 
-      return next(url, { ...init, signal: controller.signal }).finally(() => {
+      stop = () => {
         callerSignal?.removeEventListener('abort', onAbort);
-        // Only the latest call may clear the slot — never wipe a newer request's controller.
-        if (current === controller) current = undefined;
-      });
+        controller.abort(new DOMException('Superseded by a newer request', 'AbortError'));
+      };
+      return next(url, { ...init, signal: controller.signal });
     };
   });
 }

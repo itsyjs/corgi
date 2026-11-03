@@ -24,12 +24,16 @@ async function onType(q: string) {
 
 - Tagged `ORDER.cancel` (the outermost slot), so a superseding call cancels the
   entire prior chain, including any retries or timeout it had running.
+- The previous call is cut even after its response arrives, while its body is
+  still downloading, so a stale result can't land after a newer one. Read a
+  `.raw()` Response before starting the next call.
 - Keyless by design: one plugin instance is one logical stream (e.g. one search
   box). Create separate clients for separate streams.
 - A fresh `AbortController` is minted per call, so cancellation keeps working
   indefinitely. Reusing a single controller would leave it "aborted" forever after
   the first cancel.
-- The caller's own `signal` is merged in, so your own aborts still work.
+- The caller's own `signal` is merged in, so your own aborts still work, mid-body
+  too.
 
 ## It's stateful, so keep it client-level
 

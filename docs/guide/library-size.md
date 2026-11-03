@@ -127,12 +127,13 @@ Corgi calls the global through an arrow so the receiver stays correct on every r
 
 ::: details 9. Timeouts, done right (`timeout.ts` / `timeout-modern.ts`)
 A naive timeout plugin that replaces `init.signal` orphans the caller's signal, so
-`abortPrevious` and total-budget `AbortSignal.timeout` stop working, and it leaks a
-timer per request.
+`abortPrevious` and total-budget `AbortSignal.timeout` stop working. Cleaning up as
+soon as the response arrives is a subtler form of the same bug: the body still
+downloads under the plugin's signal, so neither the deadline nor a cancel reaches it.
 
 Corgi forwards the caller's abort (preserving its reason, so a user-cancel stays
-`AbortError` and a timeout stays `TimeoutError`) and cleans up the timer and listener
-on settle. Two implementations, same behaviour: the hand-rolled `/timeout` (2022-safe
+`AbortError` and a timeout stays `TimeoutError`) for the whole response, body
+included. Two implementations, same behaviour: the hand-rolled `/timeout` (2022-safe
 floor) and the smaller `/timeout-modern` (`AbortSignal.any` + `AbortSignal.timeout`,
 Baseline-2024 runtimes).
 :::

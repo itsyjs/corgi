@@ -306,6 +306,29 @@ rejection, some code fired a request and never did `.catch` - a real bug the
 mock surfaced. To clear only the recorded calls mid-test, use `resetCalls()`.
 :::
 
+### Aborts after the headers
+
+The signal still counts once the response is in, as with a real fetch: abort
+before the body is fully read, and reading it rejects with the signal's reason.
+A body that was already read (or cancelled) is unaffected. So plain replies are
+enough to test that a plugin passes aborts on to the body, not just the headers:
+
+```ts twoslash
+import { corgi, isAbortError } from '@itsy/corgi';
+import { mockFetch } from '@itsy/corgi/testing';
+
+const http = mockFetch();
+const api = corgi.create({ fetch: http.fetch });
+// ---cut---
+http.get('/report', { json: { rows: [] } });
+
+const controller = new AbortController();
+const res = await api.raw('/report', { signal: controller.signal });
+controller.abort(); // after the headers, before the body was read
+
+isAbortError(await res.json().catch((e: unknown) => e)); // true
+```
+
 ## Fake errors that pass the guards
 
 Corgi recognizes its errors by `name`, and hand-rolled fakes will miss important details:

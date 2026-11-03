@@ -15,19 +15,21 @@ import { ORDER, order } from './core.ts';
  * build of `withTimeout`.
  *
  * The **2022-safe** version: it avoids `AbortSignal.any()` so it runs on any
- * target, and it guarantees timer cleanup (`clearTimeout` on settle), which
- * matters for high-QPS servers with long timeouts. `@itsy/corgi/timeout-modern`
- * is a drop-in ~60%-smaller alternative for Baseline-2024 runtimes — same
- * `ORDER` slot, same `ms` semantics, same `"TimeoutError"` name.
+ * target. `@itsy/corgi/timeout-modern` is a drop-in, smaller alternative for
+ * Baseline-2024 runtimes — same `ORDER` slot, same `ms` semantics, same
+ * `"TimeoutError"` name, same behaviour.
  *
  * `ms` of `0` or `Infinity` disables the timeout. A fired deadline rejects with
  * a `DOMException` named `"TimeoutError"` (detect via `isTimeoutError`); a
- * caller cancel keeps its `"AbortError"`.
+ * caller cancel keeps its `"AbortError"`. Both cover the body as well as the
+ * headers, so a download that stalls partway still fails. The timer stays armed
+ * (unref'd) until it fires, even after the request has settled.
  *
  * Tagged `ORDER.timeout` (innermost): combined with `withRetry`, each attempt
- * gets its own fresh deadline and a fired timeout is retried. For a single
- * total budget across all retries, pass `signal: AbortSignal.timeout(totalMs)`
- * instead — when it fires, the retry loop sees `signal.aborted` and stops.
+ * gets its own fresh deadline and a fired timeout is retried — unless it fires
+ * mid-body, after retry has already returned. For a single total budget across
+ * all retries, pass `signal: AbortSignal.timeout(totalMs)` instead — when it
+ * fires, the retry loop sees `signal.aborted` and stops.
  */
 export function withTimeout(ms: number): Plugin {
   return order(ORDER.timeout, (next: Fetcher): Fetcher => (url, init = {}) => {
@@ -41,19 +43,20 @@ export function withTimeout(ms: number): Plugin {
     if (!ms || ms === Infinity) return next(url, init);
 
     const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(new DOMException(`Request timed out after ${ms}ms`, 'TimeoutError')),
-      ms,
-    );
 
     // Forward a caller abort with its own reason, so downstream can tell a
     // user-cancel from a timeout. Manual rather than AbortSignal.any (2022 floor).
     const onAbort = () => controller.abort(callerSignal!.reason);
     callerSignal?.addEventListener('abort', onAbort, { once: true });
 
-    return next(url, { ...init, signal: controller.signal }).finally(() => {
-      clearTimeout(timer); // never leak the timer, even on success
-      callerSignal?.removeEventListener('abort', onAbort); // never leak the listener
-    });
+    // Not cleared when the response arrives: the body still downloads under this signal.
+    const timer = setTimeout(() => {
+      callerSignal?.removeEventListener('abort', onAbort);
+      controller.abort(new DOMException(`Request timed out after ${ms}ms`, 'TimeoutError'));
+    }, ms);
+    // So a settled request can't hold the process open. Browser timer ids are numbers.
+    (timer as { unref?(): void }).unref?.();
+
+    return next(url, { ...init, signal: controller.signal });
   });
 }

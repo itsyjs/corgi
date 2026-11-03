@@ -88,6 +88,9 @@ export type MockPattern = string | RegExp | ((call: MockCall) => boolean);
  * whose signal was already aborted is recorded but never dispatched, so it
  * consumes nothing.
  *
+ * Bodies honour the request's signal, as with a real fetch: an abort before a
+ * body is fully read makes reading it reject with `signal.reason`.
+ *
  * An `HttpError` is rejected in reply position: corgi constructs `HttpError`
  * from a non-2xx `Response`, so replying with one would bypass `throwOnError`
  * and retry-on-5xx — the test would pass for the wrong reason. Reply
@@ -377,6 +380,57 @@ const sleepUnlessAborted = (ms: number, signal: AbortSignal | undefined): Promis
     signal?.addEventListener('abort', onAbort, { once: true });
   });
 
+// Like a real fetch, an abort before the body is fully read errors it with
+// `signal.reason`. Reading to the end or cancelling removes the listener.
+const withAbortableBody = (response: Response, signal: AbortSignal): Response => {
+  const source = response.body;
+  if (!source) return response;
+  // Built bodies are byte streams: keep the source's type so BYOB readers still work.
+  let type: 'bytes' | undefined = 'bytes';
+  try {
+    source.getReader({ mode: 'byob' }).releaseLock();
+  } catch {
+    type = undefined;
+  }
+  const reader = source.getReader();
+  // Set by `start`, which runs inside the constructor.
+  let controller!: ReadableStreamController<Uint8Array<ArrayBuffer>>;
+  let ended = false;
+  const end = (): void => {
+    ended = true;
+    signal.removeEventListener('abort', onAbort);
+  };
+  const onAbort = (): void => {
+    end();
+    controller.error(signal.reason);
+    reader.cancel(signal.reason).catch(() => {});
+  };
+  const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+    type,
+    start: (c) => {
+      controller = c;
+    },
+    pull: async () => {
+      const { done, value } = await reader.read().catch((error: unknown) => {
+        end();
+        throw error;
+      });
+      if (ended) return; // an abort or cancel landed while the read was pending
+      if (done) {
+        end();
+        controller.close();
+      } else controller.enqueue(value);
+    },
+    cancel: (reason) => {
+      end();
+      return reader.cancel(reason);
+    },
+  });
+  if (signal.aborted) onAbort();
+  else signal.addEventListener('abort', onAbort, { once: true });
+  return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+};
+
 type Route = { method: string; pattern: MockPattern; queue: readonly MockReply[]; served: number };
 
 // Shared by the MockRouteError listing and `unusedRoutes`, so the two agree.
@@ -408,6 +462,12 @@ const VERB_SUGAR = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
  * (`withRetry` treats network TypeErrors as transient, so a typo'd route would
  * burn real backoff time before failing). The call is still recorded;
  * `unmatchedCalls` and `unusedRoutes` are the debugging threads.
+ *
+ * As with a real fetch, the request's signal covers the body, not just the
+ * headers: abort before a body is fully read and reading it rejects with
+ * `signal.reason`; once it is read or cancelled, the mock lets go of the
+ * signal. A plugin that stops forwarding aborts once the headers arrive fails
+ * here as it would in production.
  *
  * To exercise retry against a client whose config you can't touch, reply
  * `{ status: 503, headers: { 'retry-after': '0.001' } }` — retry honors
@@ -585,7 +645,7 @@ export function mockFetch(): MockFetch {
     const where = `mockFetch dispatch ${call.method} ${call.url}`;
     validateReply(reply, where);
     assertReplayable(reply, where);
-    if (isResponseLike(reply)) return withRequestURL(await rebuild(reply), call.url);
+    if (isResponseLike(reply)) return rebuild(reply);
     if (isErrorLike(reply)) throw reply;
     if ('hang' in reply) {
       // Only the caller's signal or reset() can end this.
@@ -597,13 +657,13 @@ export function mockFetch(): MockFetch {
     const form = reply as ReplyForm;
     // `delay: 0` (falsy) deliberately skips the timer — identical to omitting it.
     if (form.delay) await sleepUnlessAborted(form.delay, signal);
-    return withRequestURL(build(form), call.url);
+    return build(form);
   };
 
   // Race a dispatch against the request's signal, propagating `signal.reason`
   // verbatim — corgi's guards are name-based, so a hardcoded AbortError here
   // would silently turn timeout tests (TimeoutError) into abort tests. Matches
-  // what a real fetch does with the same signal.
+  // what a real fetch does with the same signal, through to the end of the body.
   const raced = (work: Promise<Response>, signal: AbortSignal | undefined): Promise<Response> => {
     if (!signal) return work;
     return new Promise<Response>((resolve, reject) => {
@@ -616,7 +676,7 @@ export function mockFetch(): MockFetch {
       void work.then(
         (value) => {
           signal.removeEventListener('abort', onAbort);
-          resolve(value);
+          resolve(withAbortableBody(value, signal));
         },
         (error: unknown) => {
           signal.removeEventListener('abort', onAbort);
@@ -689,10 +749,9 @@ export function mockFetch(): MockFetch {
         unmatchedLog.push(call);
         throw unmatched(call);
       }
-      // `return await`, not `return`: it keeps the dispatch inside the try, so
-      // `finally` runs when the request settles, not when the promise is
-      // handed back.
-      return await raced(dispatch(route, call, signal, finish), signal);
+      // Awaited inside the try, so `finally` runs when the request settles,
+      // not when the promise is handed back.
+      return withRequestURL(await raced(dispatch(route, call, signal, finish), signal), call.url);
     } finally {
       finish();
     }
