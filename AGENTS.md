@@ -58,11 +58,13 @@ Return-type priority: `transform` > `responseType` > `<T>` (defaults `unknown`).
 6. **Retry skips non-replayable bodies:** a `ReadableStream` body is never retried, even on GET.
 7. **`abortPrevious` is stateful** — one client instance per logical stream; on servers build the
    client per request, never module-scope it. The slot is per client, so an `extend`ed child is a
-   SEPARATE stream — it won't supersede its parent's requests.
+   SEPARATE stream — it won't supersede its parent's requests. A supersede also cuts a body still
+   downloading: read a `.raw()` Response before the next call.
 8. **`swr` is stateful and keyed by url alone** — the cache's scope is the client. Per-user
    responses on a server need per-request (or per-user) clients, or user A's data is served to
    user B. A promise settles once: the stale-window caller gets the OLD copy by design.
-9. **Two `withTimeout` exports** — pick `@itsy/corgi/timeout` unless you know your runtime is Baseline-2024.
+9. **Two `withTimeout` exports, same behaviour** — pick `@itsy/corgi/timeout` unless you know your runtime
+   is Baseline-2024. The deadline covers the body too, so size `ms` for the whole download.
 10. **`schema` is a `transform`, not a client/`chonk` option.**
 11. **`query` drops `null`/`undefined`** (not `key=`, not a bare flag); empty arrays are dropped.
 

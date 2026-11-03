@@ -15,13 +15,13 @@ Like any plugin it also works via [`/chonk`'s options](/guide/chonk) and
 
 ## Picking an implementation
 
-It ships twice. Both expose the same `withTimeout(ms)`, the same ordering slot, and
-the same `"TimeoutError"` name, so you can swap the import freely.
+It ships twice. Both expose the same `withTimeout(ms)`, the same ordering slot, the
+same `"TimeoutError"` name and the same behaviour, so you can swap the import freely.
 
 | import                       | how                                           | runtime floor           | size         |
 | ---------------------------- | --------------------------------------------- | ----------------------- | ------------ |
 | `@itsy/corgi/timeout`        | hand-rolled `setTimeout` + `AbortController`  | 2022-safe (all targets) | larger       |
-| `@itsy/corgi/timeout-modern` | `AbortSignal.timeout()` + `AbortSignal.any()` | Baseline 2024           | ~60% smaller |
+| `@itsy/corgi/timeout-modern` | `AbortSignal.timeout()` + `AbortSignal.any()` | Baseline 2024           | ~35% smaller |
 
 ```ts twoslash
 import { withTimeout } from '@itsy/corgi/timeout-modern';
@@ -31,16 +31,20 @@ import { withTimeout } from '@itsy/corgi/timeout-modern';
 Targeting evergreen browsers, Node 18.17+, Deno, Bun, or Workers, and want the
 smallest bundle? Use `@itsy/corgi/timeout-modern`.
 
-Supporting older browsers (pre-2024 Safari/Firefox), or want guaranteed timer
-cleanup under very high load? Use `@itsy/corgi/timeout`.
+Supporting older browsers (pre-2024 Safari/Firefox)? Use `@itsy/corgi/timeout`.
 :::
 
 ## Behaviour
 
 - Tagged `ORDER.timeout` (innermost). With [`retry`](/plugins/retry), each attempt
-  gets a fresh deadline and a fired timeout is retried.
-- A caller's own `signal` is forwarded with its abort reason preserved, so a
-  user-cancel stays an `AbortError` while a timeout stays a `TimeoutError`.
+  gets a fresh deadline and a fired timeout is retried. One that fires while the
+  body downloads isn't, since retry has already returned the response.
+- The deadline covers the body as well as the headers, so `ms` is for the whole
+  download and a body that stalls partway still fails. The timer stays armed
+  (unref'd) until it fires, even after the request settles.
+- A caller's own `signal` is forwarded, body included, with its abort reason
+  preserved, so a user-cancel stays an `AbortError` while a timeout stays a
+  `TimeoutError`.
 - `ms` of `0` or `Infinity` means no timeout; the request is forwarded untouched.
 - Detect it with [`isTimeoutError`](/api/errors#istimeouterror).
 

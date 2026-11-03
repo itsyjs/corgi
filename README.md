@@ -41,7 +41,7 @@ and gets out of the way — see [Why this size?](https://itsyjs.github.io/corgi/
 | `@itsy/corgi`                | `corgi` (+ `corgi.create`), `compose`/`order`/`ORDER`, `HttpError`, `isHttpError`/`isTimeoutError`/`isAbortError` |
 | `@itsy/corgi/retry`          | `withRetry`                                                                                                       |
 | `@itsy/corgi/timeout`        | `withTimeout` — hand-rolled, 2022-safe                                                                            |
-| `@itsy/corgi/timeout-modern` | `withTimeout` — builtin-based, ~60% smaller, Baseline-2024                                                        |
+| `@itsy/corgi/timeout-modern` | `withTimeout` — builtin-based, ~35% smaller, Baseline-2024                                                        |
 | `@itsy/corgi/abort-previous` | `abortPrevious` (search-as-you-type)                                                                              |
 | `@itsy/corgi/swr`            | `swr` — stale-while-revalidate cache + in-flight request dedupe                                                   |
 | `@itsy/corgi/schema`         | `schema`, `parseWith`, `ValidationError`, `isValidationError` — Standard Schema                                   |
@@ -135,14 +135,15 @@ not replayable, so such a request is never retried.**
 ### Timeout — `@itsy/corgi/timeout` vs `@itsy/corgi/timeout-modern`
 
 Both export `withTimeout(ms)`, are drop-in identical (same `ORDER` slot, `ms` semantics — `0`/`Infinity`
-disable — and `"TimeoutError"` name), and are **per-attempt**. They differ only in implementation:
+disable — and `"TimeoutError"` name), and are **per-attempt**. The deadline and a caller's `signal`
+cover the body too, so `ms` is for the whole download, and one that stalls partway still fails. In
+both, the timer stays armed (unref'd) until it fires. They differ only in implementation:
 
 |               | `@itsy/corgi/timeout`                        | `@itsy/corgi/timeout-modern`                                                             |
 | ------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | mechanism     | hand-rolled `setTimeout` + `AbortController` | `AbortSignal.timeout()` + `AbortSignal.any()`                                            |
 | runtime floor | **2022-safe** (any target)                   | **Baseline-2024**: Node 18.17+, Chrome 116+, FF 124+, Safari 17.4+, Deno 1.39+, Bun 1.1+ |
-| size          | larger                                       | ~60% smaller                                                                             |
-| timers        | guaranteed `clearTimeout` cleanup            | native timer lingers (unref'd) until it fires                                            |
+| size          | larger                                       | ~35% smaller                                                                             |
 
 Default to `@itsy/corgi/timeout`. Choose `-modern` for the smaller bundle when your runtimes are
 Baseline-2024+. (`/chonk`'s `timeout` option uses the hand-rolled one.)
@@ -161,8 +162,10 @@ const search = corgi.create({ plugins: [abortPrevious()] });
 // each new call aborts the last; the superseded one rejects with AbortError (isAbortError -> ignore)
 ```
 
-Stateful: keep it at the client level (one instance == one search box). **On a server, create the
-client per request** — a module-scoped one would cancel unrelated users' requests.
+The previous call is cut even when only its body is still downloading, so read a `.raw()` Response
+before starting the next call. Stateful: keep it at the client level (one instance == one search
+box). **On a server, create the client per request** — a module-scoped one would cancel unrelated
+users' requests.
 
 ### SWR cache — `@itsy/corgi/swr`
 

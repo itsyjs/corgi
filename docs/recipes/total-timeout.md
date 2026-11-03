@@ -45,8 +45,10 @@ safe: each `withTimeout()` call is a fresh instance.
 
 ::: details What fires when
 
-- An attempt exceeds 5s: `TimeoutError`, and retry tries again if the 20s total
-  isn't spent.
+- An attempt exceeds 5s before its response arrives: `TimeoutError`, and retry
+  tries again if the 20s total isn't spent.
+- Both deadlines keep running while the body downloads. A timeout there fails the
+  call without a retry, since retry has already returned the response.
 - The 20s total elapses: the outer timeout aborts the in-flight attempt and the
   retry loop stops, even mid-backoff.
 - A caller's own `signal` still works and its reason is preserved, so a user-cancel
